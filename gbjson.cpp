@@ -145,6 +145,48 @@ static inline void removeSpaces(std::string *str)
 	str->erase(std::remove(str->begin(), str->end(), ' '), str->end());
 }
 
+/*
+ * getline that handles \r, \r\n, and \n line endings for files moved
+ * between platforms.
+ * @params[in] is Input stream.
+ * @params[out] line The line.
+ */
+static std::istream& safeGetline(std::istream &is, std::string &line)
+{
+    line.clear();
+
+	// This was snatched from 
+    // https://stackoverflow.com/questions/6089231/getting-std-ifstream-to-handle-lf-cr-and-crlf
+
+    // The characters in the stream are read one-by-one using a std::streambuf.
+    // That is faster than reading them one-by-one using the std::istream.
+    // Code that uses streambuf this way must be guarded by a sentry object.
+    // The sentry object performs various tasks,
+    // such as thread synchronization and updating the stream state.
+
+    std::istream::sentry se(is, true);
+    std::streambuf *sb = is.rdbuf();
+
+    for(;;) {
+        int c = sb->sbumpc();
+        switch (c) {
+        case '\n':
+            return is;
+        case '\r':
+            if(sb->sgetc() == '\n')
+                sb->sbumpc();
+            return is;
+        case std::streambuf::traits_type::eof():
+            // Also handle the case when the last line has no line ending
+            if(line.empty())
+                is.setstate(std::ios::eofbit);
+            return is;
+        default:
+            line += (char)c;
+        }
+    }
+}
+
 /***************************************************************
  * GenBank line processing
  ***************************************************************/
@@ -249,7 +291,7 @@ bool (*isItemLevel[3])(const std::string *line) = {&isKeyword, &isSubkeyword, &i
 /**
  * Parse a GenBank LOCUS entry.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseLocus(
@@ -260,13 +302,13 @@ static void parseLocus(
 	std::string back(line->substr(12, line->length() - 12));
 	writer->Key("LOCUS");
 	writer->String(back.c_str(), back.length(), true);
-	std::getline(*gbstream, *line);
+	safeGetline(*gbstream, *line);
 }
 
 /**
  * Parse a GenBank KEYWORD entry.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseKeyword(
@@ -293,7 +335,7 @@ static void parseKeyword(
 	writer->StartArray(); // Top level array
 
 	// Read the next line
-	std::getline(*gbstream, *line);
+	safeGetline(*gbstream, *line);
 
 	// Push continuation lines into buffer
 	while (isContinuation(line))
@@ -307,7 +349,7 @@ static void parseKeyword(
 		}
 		buffer.append("\n");
 		buffer.append(back);
-		std::getline(*gbstream, *line);
+		safeGetline(*gbstream, *line);
 	}
 
 	// Write buffer to JSON
@@ -329,7 +371,7 @@ static void parseKeyword(
 /**
  * Parse a GenBank qualifier entry.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseQualifier(
@@ -350,7 +392,7 @@ static void parseQualifier(
 	}
 
 	// Read the next line
-	std::getline(*gbstream, *line);
+	safeGetline(*gbstream, *line);
 
 	// Push continuation lines into the buffer
 	if (isContinuation(line))
@@ -366,7 +408,7 @@ static void parseQualifier(
 				buffer.append(" ");
 			}
 			buffer.append(back);
-			std::getline(*gbstream, *line);
+			safeGetline(*gbstream, *line);
 
 			if (isContinuation(line))
 			{
@@ -402,7 +444,7 @@ static void parseQualifier(
 /**
  * Parse a GenBank feature entry.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseFeature(
@@ -424,7 +466,7 @@ static void parseFeature(
 	writer->Key("Location");
 
 	// Consume location continuation lines
-	std::getline(*gbstream, *line);
+	safeGetline(*gbstream, *line);
 
 	while (isContinuation(line))
 	{
@@ -443,7 +485,7 @@ static void parseFeature(
 				back.append(" ");
 			}
 			buffer.append(back);
-			std::getline(*gbstream, *line);
+			safeGetline(*gbstream, *line);
 		}
 	}
 
@@ -466,7 +508,7 @@ static void parseFeature(
 /**
  * Parse a GenBank feature table.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseFeatures(
@@ -474,7 +516,7 @@ static void parseFeatures(
 	std::string *line,
 	rapidjson::PrettyWriter<rapidjson::StringBuffer> *writer)
 {
-	std::getline(*gbstream, *line);
+	safeGetline(*gbstream, *line);
 
 	if (!isFeature(line))
 	{ // No features present
@@ -490,7 +532,7 @@ static void parseFeatures(
 /**
  * Parse a GenBank origin entry.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseOrigin(
@@ -514,7 +556,7 @@ static void parseOrigin(
 /**
  * Parse a GenBank sequence entry.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseSequence(
@@ -523,14 +565,14 @@ static void parseSequence(
 	rapidjson::PrettyWriter<rapidjson::StringBuffer> *writer)
 {
 	std::string front, back, buffer;
-	std::getline(*gbstream, *line);
+	safeGetline(*gbstream, *line);
 
 	// Consume the sequence lines
 	while (isSequence(line))
 	{
 		splitSequenceLine(line, &front, &back);
 		buffer.append(back);
-		std::getline(*gbstream, *line);
+		safeGetline(*gbstream, *line);
 	}
 
 	// Write the data
@@ -548,7 +590,7 @@ static void parseSequence(
 /**
  * Delegator function for parsing GenBank items.
  * @params[in] gbstream The input string stream.
- * @params[in] line The line buffer.
+ * @params[out] line The line buffer.
  * @params[in] writer The JSON writer object.
  */
 static void parseItem(
@@ -565,7 +607,7 @@ static void parseItem(
 	else if (isEnd(line))
 	{
 		writer->EndObject();
-		std::getline(*gbstream, *line);
+		safeGetline(*gbstream, *line);
 	}
 	else if (isOrigin(line))
 	{
@@ -585,7 +627,7 @@ static void parseItem(
 	}
 	else
 	{
-		std::getline(*gbstream, *line);
+		safeGetline(*gbstream, *line);
 	}
 }
 
@@ -596,8 +638,8 @@ static void parseItem(
 /**
  * GenBank to JSON converter.
  * @params[in] gb The GenBank string.
- * @params[in] json The JSON string.
- * @params[in] err Error object.
+ * @params[out] json The JSON string.
+ * @params[out] err Error object.
  */
 void gb2json(const std::string *gb, std::string *json, gberror *err)
 {
@@ -610,7 +652,7 @@ void gb2json(const std::string *gb, std::string *json, gberror *err)
 	rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
 
 	// Start the parsing
-	std::getline(gbstream, line);
+	safeGetline(gbstream, line);
 	writer.StartArray();
 
 	while (!gbstream.eof())
@@ -975,8 +1017,8 @@ bool JSONHandler::Null()
 /**
  * JSON to GenBank converter.
  * @params[in] json The JSON string.
- * @params[in] gb The GenBank string.
- * @params[in] err Error object.
+ * @params[out] gb The GenBank string.
+ * @params[out] err Error object.
  */
 void json2gb(const std::string *json, std::string *gb, gberror *err)
 {
