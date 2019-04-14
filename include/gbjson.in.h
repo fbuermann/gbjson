@@ -20,7 +20,7 @@
  */
 struct gberror
 {
-	bool flag; ///< Error?
+	bool flag;		 ///< Error?
 	std::string msg; ///< Error message.
 	gberror();
 };
@@ -51,9 +51,9 @@ enum handlerState
  */
 struct JSONHandler : public rapidjson::BaseReaderHandler<rapidjson::UTF8<>, JSONHandler>
 {
-	handlerState state; ///< The handler is a finite state machine. Its behavior depends on its state.
+	handlerState state;   ///< The handler is a finite state machine. Its behavior depends on its state.
 	std::stringstream gb; ///< The GenBank string.
-	int nwritten; ///< Number of characters that have been written to line.
+	int nwritten;		  ///< Number of characters that have been written to line.
 	JSONHandler();
 	void updateState(const std::string key);
 	void handleStringValue(const std::string *value);

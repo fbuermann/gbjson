@@ -1,43 +1,43 @@
-/* 
+/*
  * gbjson.cpp: GenBank<->JSON conversion library
- * 
+ *
  * Copyright (c) 2019 Frank Buermann <fburmann@mrc-lmb.cam.ac.uk>
- * 
+ *
  * gbjson is free software; you can redistribute it and/or modify
  * it under the terms of the MIT license. See LICENSE for details.
  */
 
 /**
- * @mainpage gbjson - A GenBank to JSON converter
- * 
- * @section Introduction
- * 
- * This program interconverts GenBank and JSON formats. The program contains two
- * executables. gb2json converts GenBank to JSON, and json2gb does the reverse.
- * 
- * @section Usage Example usage
- * $ gb2json <i>in.gb</i> <i>out.json</i>
- * 
- * $ json2gb <i>in.json</i> <i>out.gb</i>
- * 
- * @section Building Building from source
- * Use <a href="https://cmake.org/">CMake</a> to build from source.
- * 
- * @subsection UNIX UNIX-like operating systems
- * $ cd gbjson\n 
- * $ mkdir build\n
- * $ cd build\n
- * $ cmake -G "Unix Makefiles" ..\n
- * $ make
- * 
- * @subsection WIN32 Windows
- * Building from source has been tested with <a href="https://visualstudio.microsoft.com/">Visual Studio/MSVC 2019</a>
- * using <a href="https://cmake.org/">CMake</a>.
- * 
- * @subsection Library Use as a library
- * __gbjson__ can be easily used as a C++ library.
- * Include gbjson.h in your source code. The functions _gb2json_ and _json2gb_ are the API.
- */
+  * @mainpage gbjson - A GenBank to JSON converter
+  *
+  * @section Introduction
+  *
+  * This program interconverts GenBank and JSON formats. The program contains two
+  * executables. gb2json converts GenBank to JSON, and json2gb does the reverse.
+  *
+  * @section Usage Example usage
+  * $ gb2json <i>in.gb</i> <i>out.json</i>
+  *
+  * $ json2gb <i>in.json</i> <i>out.gb</i>
+  *
+  * @section Building Building from source
+  * Use <a href="https://cmake.org/">CMake</a> to build from source.
+  *
+  * @subsection UNIX UNIX-like operating systems
+  * $ cd gbjson\n
+  * $ mkdir build\n
+  * $ cd build\n
+  * $ cmake -G "Unix Makefiles" ..\n
+  * $ make
+  *
+  * @subsection WIN32 Windows
+  * Building from source has been tested with <a href="https://visualstudio.microsoft.com/">Visual Studio/MSVC 2019</a>
+  * using <a href="https://cmake.org/">CMake</a>.
+  *
+  * @subsection Library Use as a library
+  * __gbjson__ can be easily used as a C++ library.
+  * Include gbjson.h in your source code. The functions _gb2json_ and _json2gb_ are the API.
+  */
 
 #include <iostream>
 #include <stdio.h> // fopen, fread
@@ -148,43 +148,107 @@ static inline void removeSpaces(std::string *str)
 /*
  * getline that handles \r, \r\n, and \n line endings for files moved
  * between platforms.
- * @params[in] is Input stream.
- * @params[out] line The line.
+ * @param[in] is Input stream.
+ * @param[out] line The line.
  */
-static std::istream& safeGetline(std::istream &is, std::string &line)
+
+static std::istream &safeGetline(std::istream &is, std::string &line)
 {
-    line.clear();
+	// This was snatched from
+	// https://stackoverflow.com/questions/6089231/getting-std-ifstream-to-handle-lf-cr-and-crlf
 
-	// This was snatched from 
-    // https://stackoverflow.com/questions/6089231/getting-std-ifstream-to-handle-lf-cr-and-crlf
+	// The characters in the stream are read one-by-one using a std::streambuf.
+	// That is faster than reading them one-by-one using the std::istream.
+	// Code that uses streambuf this way must be guarded by a sentry object.
+	// The sentry object performs various tasks,
+	// such as thread synchronization and updating the stream state.
 
-    // The characters in the stream are read one-by-one using a std::streambuf.
-    // That is faster than reading them one-by-one using the std::istream.
-    // Code that uses streambuf this way must be guarded by a sentry object.
-    // The sentry object performs various tasks,
-    // such as thread synchronization and updating the stream state.
+	line.clear();
 
-    std::istream::sentry se(is, true);
-    std::streambuf *sb = is.rdbuf();
+	std::istream::sentry se(is, true);
+	std::streambuf *sb = is.rdbuf();
 
-    for(;;) {
-        int c = sb->sbumpc();
-        switch (c) {
-        case '\n':
-            return is;
-        case '\r':
-            if(sb->sgetc() == '\n')
-                sb->sbumpc();
-            return is;
-        case std::streambuf::traits_type::eof():
-            // Also handle the case when the last line has no line ending
-            if(line.empty())
-                is.setstate(std::ios::eofbit);
-            return is;
-        default:
-            line += (char)c;
-        }
-    }
+	for (;;)
+	{
+		int c = sb->sbumpc();
+		switch (c)
+		{
+		case '\n':
+			return is;
+		case '\r':
+			if (sb->sgetc() == '\n')
+				sb->sbumpc();
+			return is;
+		case std::streambuf::traits_type::eof():
+			// Also handle the case when the last line has no line ending
+			if (line.empty())
+				is.setstate(std::ios::eofbit);
+			return is;
+		default:
+			line += (char)c;
+		}
+	}
+}
+
+/**
+ * Split a string into lines and left pad with whitespace
+ * @param[in] input The string.
+ * @param[out] block The padded block.
+ * @param[in] leader Number of leading whitespaces.
+ * @param[in] len Line length.
+ * @param[in] offset Offset for the first line.
+ */
+static void blockPad(
+	const std::string *input,
+	std::string *block,
+	int leader,
+	int len,
+	int offset)
+{
+	// Sanity check
+	if (len < leader || len <= 0 || offset >= len - leader)
+	{
+		*block = "";
+		return;
+	}
+
+	// Make the streams
+	std::stringstream in(*input);
+	std::stringstream out;
+	std::string line;
+
+	// Consume first input line. This does not get leading whitespace.
+	safeGetline(in, line);
+
+	int writeLen = len - leader;										// Length that contains parts of the string
+	int nfrag = std::ceil(((double)line.length() + offset) / writeLen); // Number of fragments
+
+	// First part that does not have leading whitespace.
+	out << line.substr(0, writeLen - offset);
+	out << "\n";
+
+	// Remaining parts
+	for (int i = 0; i < nfrag - 1; i++)
+	{
+		out << makeSpaces(leader);
+		out << line.substr(writeLen - offset + i * writeLen, writeLen) << "\n";
+	}
+
+	// Consume remaining input lines
+	while (!in.eof())
+	{
+		safeGetline(in, line);
+		nfrag = std::ceil(((double)line.length()) / writeLen);
+
+		for (int i = 0; i < nfrag; i++)
+		{
+			out << makeSpaces(leader);
+			out << line.substr(i * writeLen, writeLen) << "\n";
+		}
+	}
+
+	// Write result
+	*block = out.str();
 }
 
 /***************************************************************
@@ -289,11 +353,11 @@ bool (*isItemLevel[3])(const std::string *line) = {&isKeyword, &isSubkeyword, &i
  ***************************************************************/
 
 /**
- * Parse a GenBank LOCUS entry.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
- */
+  * Parse a GenBank LOCUS entry.
+  * @param[in] gbstream The input string stream.
+  * @param[out] line The line buffer.
+  * @param[in] writer The JSON writer object.
+  */
 static void parseLocus(
 	std::stringstream *gbstream,
 	std::string *line,
@@ -307,9 +371,9 @@ static void parseLocus(
 
 /**
  * Parse a GenBank KEYWORD entry.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
+ * @param[in] gbstream The input string stream.
+ * @param[out] line The line buffer.
+ * @param[in] writer The JSON writer object.
  */
 static void parseKeyword(
 	std::stringstream *gbstream,
@@ -370,9 +434,9 @@ static void parseKeyword(
 
 /**
  * Parse a GenBank qualifier entry.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
+ * @param[in] gbstream The input string stream.
+ * @param[out] line The line buffer.
+ * @param[in] writer The JSON writer object.
  */
 static void parseQualifier(
 	std::stringstream *gbstream,
@@ -443,9 +507,9 @@ static void parseQualifier(
 
 /**
  * Parse a GenBank feature entry.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
+ * @param[in] gbstream The input string stream.
+ * @param[out] line The line buffer.
+ * @param[in] writer The JSON writer object.
  */
 static void parseFeature(
 	std::stringstream *gbstream,
@@ -507,9 +571,9 @@ static void parseFeature(
 
 /**
  * Parse a GenBank feature table.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
+ * @param[in] gbstream The input string stream.
+ * @param[out] line The line buffer.
+ * @param[in] writer The JSON writer object.
  */
 static void parseFeatures(
 	std::stringstream *gbstream,
@@ -531,9 +595,9 @@ static void parseFeatures(
 
 /**
  * Parse a GenBank origin entry.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
+ * @param[in] gbstream The input string stream.
+ * @param[out] line The line buffer.
+ * @param[in] writer The JSON writer object.
  */
 static void parseOrigin(
 	std::stringstream *gbstream,
@@ -555,9 +619,9 @@ static void parseOrigin(
 
 /**
  * Parse a GenBank sequence entry.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
+ * @param[in] gbstream The input string stream.
+ * @param[out] line The line buffer.
+ * @param[in] writer The JSON writer object.
  */
 static void parseSequence(
 	std::stringstream *gbstream,
@@ -589,9 +653,9 @@ static void parseSequence(
 
 /**
  * Delegator function for parsing GenBank items.
- * @params[in] gbstream The input string stream.
- * @params[out] line The line buffer.
- * @params[in] writer The JSON writer object.
+ * @param[in] gbstream The input string stream.
+ * @param[out] line The line buffer.
+ * @param[in] writer The JSON writer object.
  */
 static void parseItem(
 	std::stringstream *gbstream,
@@ -637,9 +701,9 @@ static void parseItem(
 
 /**
  * GenBank to JSON converter.
- * @params[in] gb The GenBank string.
- * @params[out] json The JSON string.
- * @params[out] err Error object.
+ * @param[in] gb The GenBank string.
+ * @param[out] json The JSON string.
+ * @param[out] err Error object.
  */
 void gb2json(const std::string *gb, std::string *json, gberror *err)
 {
@@ -681,8 +745,8 @@ void gb2json(const std::string *gb, std::string *json, gberror *err)
  ***************************************************************/
 
 /**
- * Handler constructor.
- */
+  * Handler constructor.
+  */
 JSONHandler::JSONHandler() : state(START), nwritten(0) {}
 
 // Unused handler functions
@@ -793,7 +857,7 @@ bool JSONHandler::EndObject(rapidjson::SizeType elementCount)
 
 /**
  * Consume a string value.
- * @params[in] value The value string.
+ * @param[in] value The value string.
  */
 void JSONHandler::handleStringValue(const std::string *value)
 {
@@ -842,31 +906,21 @@ void JSONHandler::handleStringValue(const std::string *value)
 		gb << "=";
 		nwritten += 1;
 	}
-	// Write first line
-	gb << value->substr(0, 79 - nwritten);
-	gb << "\n";
 
-	// Write continuation lines
-	if (value->length() > 79 - nwritten)
-	{
+	// Split the value into padded lines
+	std::string block;
+	blockPad(value, &block, valueIndentation, 79, nwritten - valueIndentation);
 
-		int contLines = std::ceil((value->length() - (79 - nwritten)) / (79. - valueIndentation));
+	// Write the value
+	gb << block;
 
-		for (int i = 0; i < contLines; i++)
-		{
-			gb << makeSpaces(valueIndentation); // Leading spaces
-			gb << value->substr(79 - nwritten + i * (79 - valueIndentation), 79 - valueIndentation);
-			gb << "\n";
-		}
-
-		// Reset column counter
-		nwritten = 0;
-	}
+	// Reset the column counter
+	nwritten = 0;
 }
 
 /**
  * Consume the nucleotide sequence.
- * @params[in] value The string value.
+ * @param[in] value The string value.
  */
 void JSONHandler::handleSequence(const std::string *value)
 {
@@ -1016,9 +1070,9 @@ bool JSONHandler::Null()
 
 /**
  * JSON to GenBank converter.
- * @params[in] json The JSON string.
- * @params[out] gb The GenBank string.
- * @params[out] err Error object.
+ * @param[in] json The JSON string.
+ * @param[out] gb The GenBank string.
+ * @param[out] err Error object.
  */
 void json2gb(const std::string *json, std::string *gb, gberror *err)
 {
