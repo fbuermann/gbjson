@@ -1,0 +1,1252 @@
+3. FILE FORMATS
+
+  The flat file examples included in this section, while not always from the
+current release, are usually fairly recent.  Any differences compared to the
+actual records are the result of updates to the entries involved.
+
+3.1 File Header Information
+
+  With the exception of the lists of new, changed, and
+deleted accession numbers, each of the files of a GenBank release begins
+with the same header, except for the first line, which contains the file
+name, and the sixth line, which contains the title of the file. The first
+line of the file contains the file name in character positions 1 to 9 and
+the full database name (Genetic Sequence Data Bank, aka 'GenBank') starting
+in column 22. The brief names of the files in this release are listed in
+Section 2.2.
+
+  The second line contains the date of the current release in the form
+`day month year', beginning in position 27. The fourth line contains
+the current GenBank release number. The release number appears in
+positions 48 to 52 and consists of three numbers separated by a decimal
+point. The number to the left of the decimal is the major release
+number. The digit to the right of the decimal indicates the version of
+the major release; it is zero for the first version. The sixth line
+contains a title for the file. The eighth line lists the number of
+entries (loci), number of bases (or base pairs), and number of reports
+of sequences (equal to number of entries in this case). These numbers are
+right-justified at fixed positions. The number of entries appears in
+positions 1 to 8, the number of bases in positions 16 to 26, and the
+number of reports in positions 40 to 47. The third, fifth, seventh, and
+ninth lines are blank.
+
+1       10        20        30        40        50        60        70       79
+---------+---------+---------+---------+---------+---------+---------+---------
+GBBCT1.SEQ          Genetic Sequence Data Bank
+                          December 15 2018
+
+                NCBI-GenBank Flat File Release 229.0
+
+                     Bacterial Sequences (Part 1)
+
+   51396 loci,    92682287 bases, from    51396 reported sequences
+---------+---------+---------+---------+---------+---------+---------+---------
+1       10        20        30        40        50        60        70       79
+
+Example 1. Sample File Header
+
+3.4 Sequence Entry Files
+
+  GenBank releases contain one or more sequence entry data files, one
+for each "division" of GenBank.
+
+3.4.1 File Organization
+
+  Each of these files has the same format and consists of two parts:
+header information (described in section 3.1) and sequence entries for
+that division (described in the following sections).
+
+3.4.2  Entry Organization
+
+  In the second portion of a sequence entry file (containing the
+sequence entries for that division), each record (line) consists of
+two parts. The first part is found in positions 1 to 10 and may
+contain:
+
+1. A keyword, beginning in column 1 of the record (e.g., REFERENCE is
+a keyword).
+
+2. A subkeyword beginning in column 3, with columns 1 and 2 blank
+(e.g., AUTHORS is a subkeyword of REFERENCE). Or a subkeyword beginning
+in column 4, with columns 1, 2, and 3 blank (e.g., PUBMED is a
+subkeyword of REFERENCE).
+
+3. Blank characters, indicating that this record is a continuation of
+the information under the keyword or subkeyword above it.
+
+4. A code, beginning in column 6, indicating the nature of an entry
+(feature key) in the FEATURES table; these codes are described in
+Section 3.4.12.1 below.
+
+5. A number, ending in column 9 of the record. This number occurs in
+the portion of the entry describing the actual nucleotide sequence and
+designates the numbering of sequence positions.
+
+6. Two slashes (//) in positions 1 and 2, marking the end of an entry.
+
+  The second part of each sequence entry record contains the information
+appropriate to its keyword, in positions 13 to 80 for keywords and
+positions 11 to 80 for the sequence.
+
+  The following is a brief description of each entry field. Detailed
+information about each field may be found in Sections 3.4.4 to 3.4.15.
+
+LOCUS	- A short mnemonic name for the entry, chosen to suggest the
+sequence's definition. Mandatory keyword/exactly one record.
+
+DEFINITION	- A concise description of the sequence. Mandatory
+keyword/one or more records.
+
+ACCESSION	- The primary accession number is a unique, unchanging
+identifier assigned to each GenBank sequence record. (Please use this
+identifier when citing information from GenBank.) Mandatory keyword/one
+or more records.
+
+VERSION		- A compound identifier consisting of the primary
+accession number and a numeric version number associated with the
+current version of the sequence data in the record. This is optionally
+followed by an integer identifier (a "GI") assigned to the sequence
+by NCBI. Mandatory keyword/exactly one record.
+
+  NOTE : Presentation of GI sequence identifiers in the GenBank
+  flatfile format was discontinued as of March 2017.
+
+NID		- An alternative method of presenting the NCBI GI
+identifier (described above).
+
+  NOTE: The NID linetype is obsolete and was removed from the
+  GenBank flatfile format in December 1999.
+
+PROJECT		- The identifier of a project (such as a Genome
+Sequencing Project) to which a GenBank sequence record belongs.
+Optional keyword/one or more records.
+
+  NOTE: The PROJECT linetype is obsolete and was removed from the
+  GenBank flatfile format after Release 171.0 in April 2009.
+
+DBLINK		- Provides cross-references to resources that
+support the existence a sequence record, such as the Project Database
+and the NCBI Trace Assembly Archive. Optional keyword/one or
+more records.
+
+KEYWORDS	- Short phrases describing gene products and other
+information about an entry. Mandatory keyword in all annotated
+entries/one or more records.
+
+SEGMENT	- Information on the order in which this entry appears in a
+series of discontinuous sequences from the same molecule. Optional
+keyword (only in segmented entries)/exactly one record.
+
+  NOTE: The SEGMENT linetype is obsolete given the conversion of
+  of all segmented sets to gapped CON-division records, completed
+  as of GenBank Release 221.0 in August 2017. No new segmented set
+  submissions will be accepted by GenBank.
+
+SOURCE	- Common name of the organism or the name most frequently used
+in the literature. Mandatory keyword in all annotated entries/one or
+more records/includes one subkeyword.
+
+   ORGANISM	- Formal scientific name of the organism (first line)
+and taxonomic classification levels (second and subsequent lines).
+Mandatory subkeyword in all annotated entries/two or more records.
+
+   In the event that the organism name exceeds 68 characters (80 - 13 + 1)
+   in length, it will be line-wrapped and continue on a second line,
+   prior to the taxonomic classification. Unfortunately, very long 
+   organism names were not anticipated when the fixed-length GenBank
+   flatfile format was defined in the 1980s. The possibility of linewraps
+   makes the job of flatfile parsers more difficult : essentially, one
+   cannot be sure that the second line is truly a classification/lineage
+   unless it consists of multiple tokens, delimited by semi-colons.
+   The long-term solution to this problem is to introduce an additional
+   subkeyword, probably 'LINEAGE' . This might occur sometime in 2009
+   or 2010.
+
+REFERENCE	- Citations for all articles containing data reported
+in this entry. Includes seven subkeywords and may repeat. Mandatory
+keyword/one or more records.
+
+   AUTHORS	- Lists the authors of the citation. Optional
+subkeyword/one or more records.
+
+   CONSRTM	- Lists the collective names of consortiums associated
+with the citation (eg, International Human Genome Sequencing Consortium),
+rather than individual author names. Optional subkeyword/one or more records.
+
+   TITLE	- Full title of citation. Optional subkeyword (present
+in all but unpublished citations)/one or more records.
+
+   JOURNAL	- Lists the journal name, volume, year, and page
+numbers of the citation. Mandatory subkeyword/one or more records.
+
+   MEDLINE	- Provides the Medline unique identifier for a
+citation. Optional subkeyword/one record.
+
+   NOTE: The MEDLINE linetype is obsolete and was removed
+   from the GenBank flatfile format in April 2005.
+
+    PUBMED 	- Provides the PubMed unique identifier for a
+citation. Optional subkeyword/one record.
+
+   REMARK	- Specifies the relevance of a citation to an
+entry. Optional subkeyword/one or more records.
+
+COMMENT	- Cross-references to other sequence entries, comparisons to
+other collections, notes of changes in LOCUS names, and other remarks.
+Optional keyword/one or more records/may include blank records.
+
+FEATURES	- Table containing information on portions of the
+sequence that code for proteins and RNA molecules and information on
+experimentally determined sites of biological significance. Optional
+keyword/one or more records.
+
+BASE COUNT	- Summary of the number of occurrences of each basepair
+code (a, c, t, g, and other) in the sequence. Optional keyword/exactly
+one record. 
+
+   NOTE: The BASE COUNT linetype is obsolete and was removed
+   from the GenBank flatfile format in October 2003.
+
+CONTIG	- This linetype provides information about how individual sequence
+records can be combined to form larger-scale biological objects, such as
+chromosomes or complete genomes. Rather than presenting actual sequence
+data, a special join() statement on the CONTIG line provides the accession
+numbers and basepair ranges of the underlying records which comprise the
+object.
+
+As of August 2005, the 2L chromosome arm of Drosophila melanogaster
+(accession number AE014134) provided a good example of CONTIG use.
+
+ORIGIN	- Specification of how the first base of the reported sequence
+is operationally located within the genome. Where possible, this
+includes its location within a larger genetic map. Mandatory
+keyword/exactly one record.
+
+	- The ORIGIN line is followed by sequence data (multiple records).
+
+// 	- Entry termination symbol. Mandatory at the end of an
+entry/exactly one record.
+
+3.4.3 Sample Sequence Data File
+
+  An example of a complete sequence entry file follows. (This example
+has only two entries.) Note that in this example, as throughout the
+data bank, numbers in square brackets indicate items in the REFERENCE
+list. For example, in ACARR58S, [1] refers to the paper by Mackay, et
+al.
+
+1       10        20        30        40        50        60        70       79
+---------+---------+---------+---------+---------+---------+---------+---------
+GBSMP.SEQ          Genetic Sequence Data Bank
+                         December 15 1992
+
+                 GenBank Flat File Release 74.0
+
+                     Structural RNA Sequences
+
+      2 loci,       236 bases, from     2 reported sequences
+
+LOCUS       AAURRA        118 bp ss-rRNA            RNA       16-JUN-1986
+DEFINITION  A.auricula-judae (mushroom) 5S ribosomal RNA.
+ACCESSION   K03160
+VERSION     K03160.1
+KEYWORDS    5S ribosomal RNA; ribosomal RNA.
+SOURCE      A.auricula-judae (mushroom) ribosomal RNA.
+  ORGANISM  Auricularia auricula-judae
+            Eukaryota; Fungi; Eumycota; Basidiomycotina; Phragmobasidiomycetes;
+            Heterobasidiomycetidae; Auriculariales; Auriculariaceae.
+REFERENCE   1  (bases 1 to 118)
+  AUTHORS   Huysmans,E., Dams,E., Vandenberghe,A. and De Wachter,R.
+  TITLE     The nucleotide sequences of the 5S rRNAs of four mushrooms and
+            their use in studying the phylogenetic position of basidiomycetes
+            among the eukaryotes
+  JOURNAL   Nucleic Acids Res. 11, 2871-2880 (1983)
+FEATURES             Location/Qualifiers
+     rRNA            1..118
+                     /note="5S ribosomal RNA"
+BASE COUNT       27 a     34 c     34 g     23 t
+ORIGIN      5' end of mature rRNA.
+        1 atccacggcc ataggactct gaaagcactg catcccgtcc gatctgcaaa gttaaccaga
+       61 gtaccgccca gttagtacca cggtggggga ccacgcggga atcctgggtg ctgtggtt
+//
+LOCUS       ABCRRAA       118 bp ss-rRNA            RNA       15-SEP-1990
+DEFINITION  Acetobacter sp. (strain MB 58) 5S ribosomal RNA, complete sequence.
+ACCESSION   M34766
+VERSION     M34766.1
+KEYWORDS    5S ribosomal RNA.
+SOURCE      Acetobacter sp. (strain MB 58) rRNA.
+  ORGANISM  Acetobacter sp.
+            Prokaryotae; Gracilicutes; Scotobacteria; Aerobic rods and cocci;
+            Azotobacteraceae.
+REFERENCE   1  (bases 1 to 118)
+  AUTHORS   Bulygina,E.S., Galchenko,V.F., Govorukhina,N.I., Netrusov,A.I.,
+            Nikitin,D.I., Trotsenko,Y.A. and Chumakov,K.M.
+  TITLE     Taxonomic studies of methylotrophic bacteria by 5S ribosomal RNA
+            sequencing
+  JOURNAL   J. Gen. Microbiol. 136, 441-446 (1990)
+FEATURES             Location/Qualifiers
+     rRNA            1..118
+                     /note="5S ribosomal RNA"
+BASE COUNT       27 a     40 c     32 g     17 t      2 others
+ORIGIN      
+        1 gatctggtgg ccatggcggg agcaaatcag ccgatcccat cccgaactcg gccgtcaaat
+       61 gccccagcgc ccatgatact ctgcctcaag gcacggaaaa gtcggtcgcc gccagayy
+//
+---------+---------+---------+---------+---------+---------+---------+---------
+1       10        20        30        40        50        60        70       79
+
+Example 9. Sample Sequence Data File
+
+
+3.4.4 LOCUS Format
+
+3.4.4.1 : Important notice about parsing the LOCUS line
+
+  Users who process the data elements of the LOCUS line should use a
+token-based parsing approach rather than parsing its content based on
+fixed column positions.
+
+  Historically, the LOCUS line has had a fixed length and its elements have
+been presented at specific column positions. A complete description of the
+data fields and their typical column positions is provided in Section 3.4.4.2 .
+But with the anticipated increases in the lengths of accession numbers, and
+the advent of sequences that are gigabases long, maintaining the column
+positions will not always be possible and the overall length of the LOCUS
+line could exceed 79 characters.
+
+  Consider this LOCUS line for a typical complete bacterial genome:
+
+LOCUS       CP032762             5868661 bp    DNA     circular BCT 15-OCT-2018
+------------+--------------+-+---------+---------+---------+---------+---------
+1          13             28 30       40        50        60        70       79
+
+  Now contrast this with a hypothetical gigabase-scale WGS sequence record that
+utilizes the 6 + 2 + 7/8/9 accession format:
+
+LOCUS       AZZZAA02123456789 9999999999 bp    DNA     linear   PRI 15-OCT-2018
+------------+--------------+-+---------+---------+---------+---------+---------
+1          13             28 30       40        50        60        70       79
+
+  Here, Locus-Name/Accession-Number must occupy the space at position 29 which
+normally separates the Locus from the Sequence Length. And if the sequence
+length had been 10 Gigabases or greater, the Locus-Name and Sequence Length
+would directly abut each other:
+
+LOCUS       AZZZAA0212345678910000000000 bp    DNA     linear   PRI 15-OCT-2018
+------------+--------------+-+---------+---------+---------+---------+---------
+1          13             28 30       40        50        60        70       79
+
+  In cases like this, a space would be introduced to ensure that the two fields
+are separated, all other values would be shifted to the right, and the length of
+the LOCUS line would increase:
+
+LOCUS       AZZZAA02123456789 10000000000 bp    DNA     linear   PRI 15-OCT-2018
+------------+--------------+-+---------+---------+---------+---------+---------
+1          13             28 30       40        50        60        70       79
+
+  Because the Locus-Name/Accession-Number is left-justified and the
+Sequence-Length is right-justified, *most* GenBank records will conform to the
+historical column positions that are described below. But since there will be
+exceptions, we recommend that users parse the LOCUS line based on
+whitespace-separated tokens.
+
+3.4.4.2 : Data elements of the LOCUS line
+
+  The data elements of the LOCUS line format and their typical/historical
+column positions are as follows:
+
+Positions  Contents
+---------  --------
+01-05      'LOCUS'
+06-12      spaces
+13-28      Locus Name (usually identical to the Accession Number)
+29-29      space
+30-40      Sequence Length, right-justified
+41-41      space
+42-43      'bp'
+44-44      space
+45-47      Strandedness : spaces (if not known), ss- (single-stranded),
+           ds- (double-stranded), or ms- (mixed-stranded)
+48-53      Molecule Type: NA, DNA, RNA, tRNA (transfer RNA), rRNA (ribosomal RNA), 
+           mRNA (messenger RNA), uRNA (small nuclear RNA).
+           Left justified.
+54-55      space
+56-63      Molecule Topology : 'linear' followed by two spaces,
+           or 'circular'
+64-64      space
+65-67      Division Code
+68-68      space
+69-79      Update Date, in the form dd-MMM-yyyy (e.g., 15-MAR-1991)
+
+  These column positions are typical/nominal, not guaranteed. See Section
+3.4.4.1 for important suggestions about parsing the LOCUS line.
+
+  The Locus Name element was originally designed to help group entries with
+similar sequences: the first three characters designated the organism; the
+fourth and fifth characters could be used to show other group designations,
+such as gene product; for segmented entries (now obsolete) the last character
+could be one of a series of sequential integers. Here are two examples of
+older GenBank records that have Locus Names :
+
+LOCUS       HUMPDNRC                 273 bp    DNA     linear   PRI 04-OCT-1993
+DEFINITION  Human D9S125 polymorphic dinucleotide repeat.
+ACCESSION   L10620
+
+LOCUS       HUMPDNRG                 169 bp    DNA     linear   PRI 04-OCT-1993
+DEFINITION  Human D9S114 polymorphic dinucleotide repeat.
+ACCESSION   L10624
+
+  But in the mid-1990s, maintaining unique Locus Names in addition to unique
+Accession Numbers became unsustainable and the assignment of new Locus Names
+ceased. The overwhelming majority of sequence records now have no Locus Name,
+and their Accession Number is displayed on the LOCUS line instead. For example:
+
+LOCUS       AF035771                1357 bp    mRNA    linear   PRI 30-JUN-1998
+DEFINITION  Homo sapiens Na+/H+ exchanger regulatory factor 2 (NHERF-2) mRNA,
+            complete cds.
+ACCESSION   AF035771
+	    
+  The Division Code element of the LOCUS format is a three-letter abbreviation
+whose value can be :
+
+PRI - primate sequences
+ROD - rodent sequences
+MAM - other mammalian sequences
+VRT - other vertebrate sequences
+INV - invertebrate sequences
+PLN - plant, fungal, and algal sequences
+BCT - bacterial sequences
+VRL - viral sequences
+PHG - bacteriophage sequences
+SYN - synthetic sequences
+UNA - unannotated sequences
+EST - EST sequences (Expressed Sequence Tags) 
+PAT - patent sequences
+STS - STS sequences (Sequence Tagged Sites) 
+GSS - GSS sequences (Genome Survey Sequences) 
+HTG - HTGS sequences (High Throughput Genomic sequences) 
+HTC - HTC sequences (High Throughput cDNA sequences) 
+ENV - Environmental sampling sequences
+CON - Constructed sequences
+TSA - Transcriptome Shotgun Assembly sequences
+
+  The Molecule Type for all non-coding RNA sequences is 'RNA'. Further
+information about the specific type of non-coding RNA can be obtained from
+the full-length ncRNA feature that will be present on such sequences.
+
+3.4.5 DEFINITION Format
+
+  The DEFINITION record gives a brief description of the sequence,
+proceeding from general to specific. It starts with the common name of
+the source organism, then gives the criteria by which this sequence is
+distinguished from the remainder of the source genome, such as the
+gene name and what it codes for, or the protein name and mRNA, or some
+description of the sequence's function (if the sequence is
+non-coding). If the sequence has a coding region, the description may
+be followed by a completeness qualifier, such as cds (complete coding
+sequence). There is no limit on the number of lines that may be part
+of the DEFINITION.  The last line must end with a period.
+
+3.4.5.1 DEFINITION Format for NLM Entries
+
+  The DEFINITION line for entries derived from journal-scanning at the NLM is
+an automatically generated descriptive summary that accompanies each DNA and
+protein sequence. It contains information derived from fields in a database 
+that summarize the most important attributes of the sequence.  The DEFINITION
+lines are designed to supplement the accession number and the sequence itself
+as a means of uniquely and completely specifying DNA and protein sequences. The
+following are examples of NLM DEFINITION lines:
+
+NADP-specific isocitrate dehydrogenase [swine, mRNA, 1 gene, 1585 nt]
+
+94 kda fiber cell beaded-filament structural protein [rats, lens, mRNA
+Partial, 1 gene, 1873 nt]
+
+inhibin alpha {promoter and exons} [mice, Genomic, 1 gene, 1102 nt, segment
+1 of 2]
+
+cefEF, cefG=acetyl coenzyme A:deacetylcephalosporin C o-acetyltransferase
+[Acremonium chrysogenum, Genomic, 2 genes, 2639 nt]
+
+myogenic factor 3, qmf3=helix-loop-helix protein [Japanese quails,
+embryo, Peptide Partial, 246 aa]
+
+
+  The first part of the definition line contains information describing
+the genes and proteins represented by the molecular sequences.  This can
+be gene locus names, protein names and descriptions that replace or augment
+actual names.  Gene and gene product are linked by "=".  Any special
+identifying terms are presented within brackets, such as: {promoter},
+{N-terminal}, {EC 2.13.2.4}, {alternatively spliced}, or {3' region}.
+
+  The second part of the definition line is delimited by square brackets, '[]',
+and provides details about the molecule type and length.  The biological
+source, i.e., genus and species or common name as cited by the author.
+Developmental stage, tissue type and strain are included if available.
+The molecule types include: Genomic, mRNA, Peptide. and Other Genomic
+Material. Genomic molecules are assumed to be partial sequence unless
+"Complete" is specified, whereas mRNA and peptide molecules are assumed
+to be complete unless "Partial" is noted.
+
+3.4.6 ACCESSION Format
+
+  This field contains a series of six-character and/or eight-character
+identifiers called 'accession numbers'. The six-character accession
+number format consists of a single uppercase letter, followed by 5 digits.
+The eight-character accession number format consists of two uppercase
+letters, followed by 6 digits. The 'primary', or first, of the accession
+numbers occupies positions 13 to 18 (6-character format) or positions
+13 to 20 (8-character format). Subsequent 'secondary' accession numbers
+(if present) are separated from the primary, and from each other, by a
+single space. In some cases, multiple lines of secondary accession
+numbers might be present, starting at position 13.
+
+  The primary accession number of a GenBank entry provides a stable identifier
+for the biological object that the entry represents. Accessions do not change
+when the underlying sequence data or associated features change.
+
+  Secondary accession numbers arise for a number of reasons. For example, a
+single accession number may initially be assigned to a sequence described in
+a publication. If it is later discovered that the sequence must be entered
+into the database as multiple entries, each entry would receive a new primary
+accession number, and the original accession number would appear as a secondary
+accession number on each of the new entries. In the event that a large number
+of continuous secondary accession numbers exist, a range can be employed:
+
+	SecAccession1-SecAccession2
+
+In such cases, the alphabetic prefix letters of the initial and terminal 
+accession numbers within the range *MUST* be identical. For example:
+
+	AE000111-AE000510O
+        ^^       ^^
+
+Additionally, the value of the numeric portion of the initial secondary
+within the range must be less than the value of the numeric portion of the
+terminal secondary.
+
+3.4.7.1 VERSION Format
+
+  This line contains a compound identifier consisting of the accession
+number plus the sequential version number of the associated sequence.
+
+LOCUS       AF181452     1294 bp    DNA             PLN       12-OCT-1999
+DEFINITION  Hordeum vulgare dehydrin (Dhn2) gene, complete cds.
+ACCESSION   AF181452
+VERSION     AF181452.1
+            ^^^^^^^^^^
+            Compound  
+            Accession.Version
+            Number
+
+  A compound Accession.Version consists of two parts: a stable, unchanging
+primary-accession number portion (see Section 3.4.6 for a description of
+accession numbers), and a sequentially increasing numeric version number.
+The accession and version numbers are separated by a period. The initial
+version number assigned to a new sequence is one.
+
+  An accession number allows one to retrieve the same biological object in the
+database, regardless of any changes that are made to the entry over time. But
+those changes can include changes to the sequence data itself, which is of
+fundamental importance to many database users. So a numeric version number is
+associated with the sequence data in every database entry. If an entry (for
+example, AF181452) undergoes two sequence changes, its compound accession
+number on the VERSION line would start as AF181452.1 . After the first sequence
+change this would become: AF181452.2 . And after the second change: AF181452.3 .
+
+  Numeric NCBI "GI" sequence identifiers also used to be included on the
+VERSION line, but that practice was discontinued in March of 2017.
+
+  GenBank Releases contain only the most recent versions of all sequences
+in the database. However, older versions can be obtained via
+Accession.Version-based queries with NCBI's web-Entrez and network-Entrez
+applications. A sequence 'revision history' resource is also available,
+within Entrez:Nucleotide. For example:
+
+   http://www.ncbi.nlm.nih.gov/nuccore/AF123456.1?report=girevhist
+
+NOTE: All the version numbers for the compound Accession.Version identifier
+system were initialized to a value of one (".1") in February 1999, when the
+system was first introduced.
+
+3.4.7.2 DBLINK Format
+
+  This line contains cross-references to other underlying resources that
+support the existence of a GenBank sequence record. For example:
+
+LOCUS       ANHA01000001             503 bp    DNA     linear   BCT 23-NOV-2012
+DEFINITION  Campylobacter coli BIGS0016 3011, whole genome shotgun sequence.
+ACCESSION   ANHA01000001 ANHA01000000
+VERSION     ANHA01000001.1
+DBLINK      BioProject: PRJNA177352
+            BioSample: SAMN01795900
+
+  A DBLINK cross-reference consists of two data fields delimited by a colon.
+The first field provides the cross-reference type ("BioProject"), while the
+second contains the actual cross-reference identifier ("PRJNA177352").
+
+  The second field can consist of multiple comma-separated identifiers,
+if a sequence record has multiple DBLINK cross-references of a given type.
+For example:
+
+DBLINK      BioProject:PRJNA174162,PRJNA999998,PRJNA999999
+
+  And, as in this example, there can be multiple distinct types of DBLINK
+cross-references. Each new type will start on a new line, with the first
+colon-delimited token being the name of the cross-referenced resource.
+
+  As of April 2013, the supported DBLINK cross-reference types are "Project"
+(predecessor of BioProject), "BioProject", "BioSample", "Trace Assembly Archive",
+"Sequence Read Archive", and "Assembly".
+
+  DBLINK cross-references of type 'BioProject' are BioProject Accession
+Number identifiers within the Entrez:BioProject resource at the NCBI:
+
+	http://www.ncbi.nlm.nih.gov/bioproject
+
+  At the above URL, a search for PRJNA177352 would provide information about the
+Campylobacter coli sequencing project (underway or completed), the center(s)
+performing the sequencing and annotation, information about the organism, etc.
+For a more detailed overview of NCBI's BioProject resource:
+
+	http://www.ncbi.nlm.nih.gov/books/NBK54016/
+
+  DBLINK cross-references of type 'Assembly' are AssemblyID identifiers within
+the Assembly resource at NCBI:
+
+	http://www.ncbi.nlm.nih.gov/assembly
+
+  At the above URL, a search for GCA_000321225.1 would provide assembly details
+and statistics for the Odobenus rosmarus divergens (Pacific walrus) genome assembly
+submitted by the center(s) that performed the assembly. For a more detailed overview
+of NCBI's Assembly resource:
+
+   http://www.ncbi.nlm.nih.gov/assembly/help/
+
+3.4.8 KEYWORDS Format
+
+  The KEYWORDS field does not appear in unannotated entries, but is
+required in all annotated entries. Keywords are separated by
+semicolons; a "keyword" may be a single word or a phrase consisting of
+several words. Each line in the keywords field ends in a semicolon;
+the last line ends with a period. If no keywords are included in the
+entry, the KEYWORDS record contains only a period.
+
+3.4.9 SEGMENT Format
+
+  NOTE: The SEGMENT linetype is obsolete given the conversion of
+  of all segmented sets to gapped CON-division records, completed
+  as of GenBank Release 221.0 in August 2017. No new segmented set
+  submissions will be accepted by GenBank.
+
+  The SEGMENT keyword is used when two (or more) entries of known
+relative orientation are separated by a short (<10 kb) stretch of DNA.
+It is limited to one line of the form `n of m', where `n' is the
+segment number of the current entry and `m' is the total number of
+segments.
+
+3.4.10 SOURCE Format
+
+  The SOURCE field consists of two parts. The first part is found after
+the SOURCE keyword and contains free-format information including an
+abbreviated form of the organism name followed by a molecule type;
+multiple lines are allowed, but the last line must end with a period.
+The second part consists of information found after the ORGANISM
+subkeyword. The formal scientific name for the source organism (genus
+and species, where appropriate) is found on the same line as ORGANISM.
+The records following the ORGANISM line list the taxonomic
+classification levels, separated by semicolons and ending with a
+period.
+
+3.4.11 REFERENCE Format
+
+  The REFERENCE field consists of five parts: the keyword REFERENCE, and
+the subkeywords AUTHORS, TITLE (optional), JOURNAL, MEDLINE (optional),
+PUBMED (optional), and REMARK (optional).
+
+  The REFERENCE line contains the number of the particular reference and
+(in parentheses) the range of bases in the sequence entry reported in
+this citation. Additional prose notes may also be found within the
+parentheses. The numbering of the references does not reflect
+publication dates or priorities.
+
+  The AUTHORS line lists the authors in the order in which they appear
+in the cited article. Last names are separated from initials by a
+comma (no space); there is no comma before the final `and'. The list
+of authors ends with a period.  The TITLE line is an optional field,
+although it appears in the majority of entries. It does not appear in
+unpublished sequence data entries that have been deposited directly
+into the GenBank data bank, the European Nucleotide Archive,
+or the DNA Data Bank of Japan. The TITLE field does not end with a
+period.
+
+  The JOURNAL line gives the appropriate literature citation for the
+sequence in the entry. The word `Unpublished' will appear after the
+JOURNAL subkeyword if the data did not appear in the scientific
+literature, but was directly deposited into the data bank. For
+published sequences the JOURNAL line gives the Thesis, Journal, or
+Book citation, including the year of publication, the specific
+citation, or In press.
+
+  For Book citations, the JOURNAL line is specially-formatted, and
+includes:
+
+	editor name(s)
+	book title
+	page number(s)
+	publisher-name/publisher-location
+	year
+
+For example:
+
+LOCUS       AY277550                1440 bp    DNA     linear   BCT 17-JUN-2003
+DEFINITION  Stenotrophomonas maltophilia strain CSC13-6 16S ribosomal RNA gene,
+            partial sequence.
+ACCESSION   AY277550
+....
+REFERENCE   1  (bases 1 to 1440)
+  AUTHORS   Gonzalez,J.M., Laiz,L. and Saiz-Jimenez,C.
+  TITLE     Classifying bacterial isolates from hypogean environments:
+            Application of a novel fluorimetric method dor the estimation of
+            G+C mol% content in microorganisms by thermal denaturation
+            temperature
+  JOURNAL   (in) Saiz-Jimenez,C. (Ed.);
+            MOLECULAR BIOLOGY AND CULTURAL HERITAGE: 47-54;
+            A.A. Balkema, The Netherlands (2003)
+
+  The presence of "(in)" signals the fact that the reference is for a book
+rather than a journal article. A semi-colon signals the end of the editor
+names. The next semi-colon signals the end of the page numbers, and the
+colon that immediately *precedes* the page numbers signals the end of the
+book title. The publisher name and location are a free-form text string.
+Finally, the year appears at the very end of the JOURNAL line, enclosed in
+parentheses.
+
+  The MEDLINE line provides the National Library of Medicine's Medline
+unique identifier for a citation (if known). Medline UIs are 8 digit
+numbers.
+
+  The PUBMED line provides the PubMed unique identifier for a citation
+(if known). PUBMED ids are numeric, and are record identifiers for article
+abstracts in the PubMed database :
+
+       http://www.ncbi.nlm.nih.gov/entrez/query.fcgi?db=PubMed
+
+  Citations in PubMed that do not fall within Medline's scope will have only
+a PUBMED identifier. Similarly, citations that *are* in Medline's scope but
+which have not yet been assigned Medline UIs will have only a PUBMED identifier.
+If a citation is present in both the PubMed and Medline databases, both a
+MEDLINE and a PUBMED line will be present.
+
+  The REMARK line is a textual comment that specifies the relevance
+of the citation to the entry.
+
+3.4.12 FEATURES Format
+
+  GenBank releases use a feature table format designed jointly by GenBank,
+the European Nucleotide Archive, and the DNA Data Bank of Japan. This format
+is in use by all three databases. The most complete and accurate Feature
+Table documentation can be found on the Web at:
+
+	http://www.insdc.org/documents/feature-table
+
+  The feature table contains information about genes and gene products,
+as well as regions of biological significance reported in the
+sequence. The feature table contains information on regions of the
+sequence that code for proteins and RNA molecules. It also enumerates
+differences between different reports of the same sequence, and
+provides cross-references to other data collections, as described in
+more detail below.
+
+  The first line of the feature table is a header that includes the
+keyword `FEATURES' and the column header `Location/Qualifiers.' Each
+feature consists of a descriptor line containing a feature key and a
+location (see sections below for details). If the location does not
+fit on this line, a continuation line may follow. If further
+information about the feature is required, one or more lines
+containing feature qualifiers may follow the descriptor line.
+
+  The feature key begins in column 6 and may be no more than 15
+characters in length. The location begins in column 22. Feature
+qualifiers begin on subsequent lines at column 22. Location,
+qualifier, and continuation lines may extend from column 22 to 80.
+
+  Feature tables are required, due to the mandatory presence of the
+source feature. The sections below provide a brief introduction to
+the feature table format.
+
+3.4.12.1 Feature Key Names
+
+  The first column of the feature descriptor line contains the feature
+key. It starts at column 6 and can continue to column 20. The list of
+valid feature keys is available at:
+
+	http://www.insdc.org/documents/feature-table#7.2
+
+3.4.12.2 Feature Location
+
+  The second column of the feature descriptor line designates the
+location of the feature in the sequence. The location descriptor
+begins at position 22. Several conventions are used to indicate
+sequence location.
+
+  Base numbers in location descriptors refer to numbering in the entry,
+which is not necessarily the same as the numbering scheme used in the
+published report. The first base in the presented sequence is numbered
+base 1. Sequences are presented in the 5' to 3' direction.
+
+Location descriptors can be one of the following:
+
+1. A single base;
+
+2. A contiguous span of bases;
+
+3. A site between two bases;
+
+4. A single base chosen from a range of bases;
+
+5. A single base chosen from among two or more specified bases;
+
+6. A joining of sequence spans;
+
+7. A reference to an entry other than the one to which the feature
+belongs (i.e., a remote entry), followed by a location descriptor
+referring to the remote sequence;
+
+  A site between two residues, such as an endonuclease cleavage site, is
+indicated by listing the two bases separated by a carat (e.g., 23^24).
+
+  A single residue chosen from a range of residues is indicated by the
+number of the first and last bases in the range separated by a single
+period (e.g., 23.79). The symbols < and > indicate that the end point
+of the range is beyond the specified base number.
+
+  A contiguous span of bases is indicated by the number of the first and
+last bases in the range separated by two periods (e.g., 23..79). The
+symbols < and > indicate that the end point of the range is beyond the
+specified base number. Starting and ending positions can be indicated
+by base number or by one of the operators described below.
+
+  Operators are prefixes that specify what must be done to the indicated
+sequence to locate the feature. The following are the operators
+available, along with their most common format and a description.
+
+complement (location): The feature is complementary to the location
+indicated. Complementary strands are read 5' to 3'.
+
+join (location, location, .. location): The indicated elements should
+be placed end to end to form one contiguous sequence.
+
+order (location, location, .. location): The elements are found in the
+specified order in the 5 to 3 direction, but nothing is implied about
+the rationality of joining them.
+
+3.4.12.3  Feature Qualifiers
+
+  Qualifiers provide additional information about features. They take
+the form of a slash (/) followed by a qualifier name and, if
+applicable, an equal sign (=) and a qualifier value. Feature
+qualifiers begin at column 22.
+
+  The list of valid feature keys is available at:
+
+	http://www.insdc.org/documents/feature-table#7.3
+
+Qualifiers convey many types of information. Their values can,
+therefore, take several forms:
+
+1. Free text;
+2. Controlled vocabulary or enumerated values;
+3. Citations or reference numbers;
+4. Sequences;
+5. Feature labels.
+
+  Text qualifier values must be enclosed in double quotation marks. The
+text can consist of any printable characters (ASCII values 32-126
+decimal). If the text string includes double quotation marks, each set
+must be `escaped' by placing a double quotation mark in front of it
+(e.g., /note="This is an example of ""escaped"" quotation marks").
+
+  Some qualifiers require values selected from a limited set of choices.
+For example, the `/direction' qualifier has only three values `left,'
+`right,' or `both.' These are called controlled vocabulary qualifier
+values. Controlled qualifier values are not case sensitive; they can
+be entered in any combination of upper- and lowercase without changing
+their meaning.
+
+  Citation or published reference numbers for the entry should be
+enclosed in square brackets ([]) to distinguish them from other
+numbers.
+
+  A literal sequence of bases (e.g., "atgcatt") should be enclosed in
+quotation marks. Literal sequences are distinguished from free text by
+context. Qualifiers that take free text as their values do not take
+literal sequences, and vice versa.
+
+  The `/label=' qualifier takes a feature label as its qualifier.
+Although feature labels are optional, they allow unambiguous
+references to the feature. The feature label identifies a feature
+within an entry; when combined with the accession number and the name
+of the data bank from which it came, it is a unique tag for that
+feature. Feature labels must be unique within an entry, but can be the
+same as a feature label in another entry. Feature labels are not case
+sensitive; they can be entered in any combination of upper-and
+lowercase without changing their meaning.
+
+3.4.12.4 Cross-Reference Information
+
+  One type of information in the feature table lists cross-references to
+the annual compilation of transfer RNA sequences in Nucleic Acids
+Research, which has kindly been sent to us on CD-ROM by Dr. Sprinzl.
+Each tRNA entry of the feature table contains a /note= qualifier that
+includes a reference such as `(NAR: 1234)' to identify code 1234 in
+the NAR compilation. When such a cross-reference appears in an entry
+that contains a gene coding for a transfer RNA molecule, it refers to
+the code in the tRNA gene compilation. Similar cross-references in
+entries containing mature transfer RNA sequences refer to the
+companion compilation of tRNA sequences published by D.H. Gauss and M.
+Sprinzl in Nucleic Acids Research.
+
+3.4.12.5 Feature Table Examples
+
+  In the first example a number of key names, feature locations, and
+qualifiers are illustrated, taken from different sequences. The first
+table entry is a coding region consisting of a simple span of bases
+and including a /gene qualifier. In the second table entry, an NAR
+cross-reference is given (see the previous section for a discussion of
+these cross-references). The third and fourth table entries use the
+symbols `<`and `>' to indicate that the beginning or end of the
+feature is beyond the range of the presented sequence. In the fifth
+table entry, the symbol `^' indicates that the feature is between
+bases.
+
+1       10        20        30        40        50        60        70       79
+---------+---------+---------+---------+---------+---------+---------+---------
+     CDS             5..1261
+                     /product="alpha-1-antitrypsin precursor"
+                     /map="14q32.1"
+                     /gene="PI"
+     tRNA            1..87
+                     /note="Leu-tRNA-CAA (NAR: 1057)"
+                     /anticodon=(pos:35..37,aa:Leu)
+     mRNA            1..>66
+                     /note="alpha-1-acid glycoprotein mRNA"
+     transposon      <1..267
+                     /note="insertion element IS5"
+     misc_recomb     105^106
+                     /note="B.subtilis DNA end/IS5 DNA start"
+     conflict        258
+                     /replace="t"
+                     /citation=[2]
+---------+---------+---------+---------+---------+---------+---------+---------
+1       10        20        30        40        50        60        70       79
+
+Example 10. Feature Table Entries
+
+
+The next example shows the representation for a CDS annotated on a scaffold/
+CON-division entry built from contigs of the LQNL01 WGS project:
+
+1       10        20        30        40        50        60        70       79
+---------+---------+---------+---------+---------+---------+---------+---------
+LOCUS       KZ271580              141308 bp    DNA     linear   CON 17-AUG-2017
+DEFINITION  Onchocerca flexuosa isolate Red Deer unplaced genomic scaffold
+            O_flexuosa-1.0_Cont1703, whole genome shotgun sequence.
+ACCESSION   KZ271580 LQNL01000000
+VERSION     KZ271580.1
+DBLINK      BioProject: PRJNA230512
+            BioSample: SAMN04226856
+KEYWORDS    WGS; HIGH_QUALITY_DRAFT.
+...
+     mRNA            complement(join(<1..1557,1914..2102,2273..2312))
+                     /locus_tag="X798_08235"
+                     /product="hypothetical protein"
+     CDS             complement(join(<1..1557,1914..2102,2273..2312))
+                     /locus_tag="X798_08235"
+                     /codon_start=1
+                     /product="hypothetical protein"
+                     /protein_id="OZC04795.1"
+                     /db_xref="GI:1233056989"
+                     /translation="MPKKQKSKIPESSGESAHSPIWSVTRRQRTELSPRRDDEIGSTQ
+                     SFSSRTVTTTERVQMIPLPVTFDAPVDVLTPTGRNERFLATTKITSESYSLPVIGGIT
+                     ISGAPLYTGLYIVPKTTKTRNVRTMMTTTTTTTYSAIEINDNEEELKVETEEKTVPQS
+                     TRITLDFPMDYEVVDFEDLLAASPAEEKEHLYVVVGKKDSPTRTTDAADYVVKMIDID
+                     LPSSESKDSPSIERISDAEIEGLMTEIEEGYSDRHDYDAYEGTIASTSRSNEIDQEPI
+                     HRYVTVYHNGISSEKLSPEVERISKEVSTVVAKLSGAYKRASIEGEHIIYTDTKTGQT
+                     LQKGTQSENRQIGESPRRLKSTYTVRFSDPFRIEADDYPWTQQENQSEIIFQKEKKDQ
+                     IGTLDEWQKEKDQQTQINQKGAKIIEEIRQKKPVNAGKLITGLFKKGETYLDYPATET
+                     YKGPVDSTYRILDVESEPIEQLVSVYHNGRSDEFVPIEEKKPSIDVGEVFTDAAQALG
+                     AKITGLFKRGPAHLDYPTSGPYDGPLASTSLALDVEGEPLQQHVNVYHSGRSDEPMIK
+                     IVEIPTEIPVEEVLEEKPIVTAKIITGLF"
+CONTIG      join(LQNL01005322.1:1..30605,gap(100),LQNL01005323.1:1..85586,
+            gap(100),LQNL01005324.1:1..24917)
+//
+---------+---------+---------+---------+---------+---------+---------+---------
+1       10        20        30        40        50        60        70       79
+
+Example 11. Scaffold/CON-division join() sequence
+
+
+3.4.13 ORIGIN Format
+
+  The ORIGIN record may be left blank, may appear as `Unreported.' or
+may give a local pointer to the sequence start, usually involving an
+experimentally determined restriction cleavage site or the genetic
+locus (if available). The ORIGIN record ends in a period if it
+contains data, but does not include the period if the record is left
+empty (in contrast to the KEYWORDS field which contains a period
+rather than being left blank).
+
+3.4.14 SEQUENCE Format
+
+  The nucleotide sequence for an entry is found in the records following
+the ORIGIN record. The sequence is reported in the 5' to 3' direction.
+There are sixty bases per record, listed in groups of ten bases
+followed by a blank, starting at position 11 of each record. The
+number of the first nucleotide in the record is given in columns 4 to
+9 (right justified) of the record.
+
+3.4.15 CONTIG Format
+
+  As an alternative to SEQUENCE, a CONTIG record can be present
+following the ORIGIN record. A join() statement utilizing a syntax
+similar to that of feature locations (see the Feature Table specification
+mentioned in Section 3.4.12) provides the accession numbers and basepair
+ranges of other GenBank sequences which contribute to a large-scale
+biological object, such as a chromosome or complete genome. Here is
+an example of the use of CONTIG :
+
+CONTIG      join(AE003590.3:1..305900,AE003589.4:61..306076,
+            AE003588.3:61..308447,AE003587.4:61..314549,AE003586.3:61..306696,
+            AE003585.5:61..343161,AE003584.5:61..346734,AE003583.3:101..303641,
+
+            [ lines removed for brevity ]
+
+            AE003782.4:61..298116,AE003783.3:16..111706,AE002603.3:61..143856)
+
+However, the CONTIG join() statement can also utilize a special operator
+which is *not* part of the syntax for feature locations:
+
+	gap()     : Gap of unknown length.
+
+	gap(X)    : Gap with an estimated integer length of X bases.
+
+	            To be represented as a run of n's of length X
+	            in the sequence that can be constructed from
+	            the CONTIG line join() statement .
+
+	gap(unkX) : Gap of unknown length, which is to be represented
+	            as an integer number (X) of n's in the sequence that
+	            can be constructed from the CONTIG line join()
+	            statement.
+
+	            The value of this gap operator consists of the 
+	            literal characters 'unk', followed by an integer.
+
+Here is an example of a CONTIG line join() that utilizes the gap() operator:
+
+CONTIG      join(complement(AADE01002756.1:1..10234),gap(1206),
+            AADE01006160.1:1..1963,gap(323),AADE01002525.1:1..11915,gap(1633),
+            AADE01005641.1:1..2377)
+
+The first and last elements of the join() statement may be a gap() operator.
+But if so, then those gaps should represent telomeres, centromeres, etc.
+
+Consecutive gap() operators are illegal.
+
+
+4. ALTERNATE RELEASES
+
+  NCBI is supplying sequence data in the GenBank flat file format to
+maintain compatibility with existing software which require that
+particular format.  Although we have made every effort to ensure
+that these data are presented in the traditional flat file format,
+if you encounter any problems in using these data with software which
+is based upon the flat file format, please contact us at:
+
+              info@ncbi.nlm.nih.gov
+
+  The flat file is just one of many possible report formats that can be
+generated from the richer representation supported by the ASN.1 form of the
+data.  Developers of new software tools should consider using the ASN.1 form
+directly to take advantage of those features.  Documentation and a Software
+Developer's Toolkit for ASN.1 are available through NCBI.
+
+  The Software Developer's Toolkit and PostScript documentation for Linux,
+MacOS and Microsoft Windows systems is available in a compressed UNIX tar
+file by anonymous ftp from 'ftp.ncbi.nih.gov', in the toolbox/ncbi_tools++
+directory. The file is 'ncbi_cxx--18_0_0.tar.gz'.
+
+
+5. KNOWN PROBLEMS OF THE GENBANK DATABASE
+
+5.1 Incorrect Gene Symbols in Entries and Index
+
+  The /gene qualifier for many GenBank entries contains values other than the
+official gene symbol, such as the product or the standard name of the gene.
+
+
+6. GENBANK ADMINISTRATION 
+
+  The National Center for Biotechnology Information (NCBI), National Library
+of Medicine, National Institutes of Health, is responsible for the production
+and distribution of the NIH GenBank Sequence Database.  NCBI distributes
+GenBank sequence data by anonymous FTP, e-mail servers and other
+network services.  For more information, you may contact NCBI at the
+e-mail address: info@ncbi.nlm.nih.gov .
+
+6.1 Registered Trademark Notice
+
+  GenBank (R) is a registered trademark of the U.S. Department of Health
+and Human Services for the Genetic Sequence Data Bank.
+
+6.2 Citing GenBank
+
+  If you have used GenBank in your research, we would appreciate it if
+you would include a reference to GenBank in all publications related
+to that research.
+
+  When citing data in GenBank, it is appropriate to give the sequence
+name, primary accession number, and the publication in which the
+sequence first appeared.  If the data are unpublished, we urge you to
+contact the group which submitted the data to GenBank to see if there
+is a recent publication or if they have determined any revisions or
+extensions of the data.
+
+  It is also appropriate to list a reference for GenBank itself.  The
+following publication, which describes the GenBank database, should
+be cited:
+
+   Benson DA, Cavanaugh M, Clark K, Karsch-Mizrachi I, Lipman DJ,
+   Ostell J, Sayers EW
+   GenBank. Nucleic Acids Res. 45(D1):D37-D42 (2017)
+
+   DOI:   10.1093/nar/gkw1070
+   PMID:  27899564
+   PMCID: PMC5210553
+
+  The following statement is an example of how one might cite GenBank
+data.  It cites the sequence, its primary accession number, the group
+who determined the sequence, and GenBank.  The numbers in parentheses
+refer to the GenBank citation above and to the REFERENCE in the
+GenBank sequence entry.
+
+`We scanned the GenBank (1) database for sequence similarities and
+found one sequence (2), GenBank accession number V00002, which showed
+significant similarity...'
+
+  (1) Benson, D. et al, Nucleic Acids Res. 45(D1):D37-D42 (2017)
+  (2) Nellen, W. and Gallwitz, D. J. Mol. Biol. 159, 1-18 (1982)
+
+6.3 GenBank Distribution Formats and Media
+
+  Complete flat file releases of the GenBank database are available via
+NCBI's anonymous ftp server:
+
+	ftp://ftp.ncbi.nih.gov
+
+  Each release is cumulative, incorporating all previous GenBank data.
+No retrieval software is provided. GenBank distribution via CD-ROM
+ceased as of GenBank Release 106.0 (April, 1998).
+
+6.4 Other Methods of Accessing GenBank Data
+
+  Entrez is a molecular biology database system that presents an integrated
+view of DNA and protein sequence data, 3D structure data, complete genomes,
+and associated MEDLINE entries. The system is produced by the National
+Center for Biotechnology Information (NCBI), and is available only via
+the Internet (using the Web-Entrez and Network-Entrez applications).
+
+  Accessing Entrez is easy: Simply direct your web browser of choice to:
+
+	 http://www.ncbi.nlm.nih.gov/
+
+  The Web version of Entrez has all the capabilities of the network version,
+but with the visual style of the World Wide Web. If you prefer the "look and
+feel" of Network-Entrez, you may download Network-Entrez from the NCBI's
+FTP server:
+
+	ftp://ftp.ncbi.nih.gov/
+
+Versions are available for PC/Windows, Macintosh and several Unix variants.
+
+  For information about Network-Entrez, Web-Entrez or any other NCBI
+services, you may contact NCBI by e-mail at info@ncbi.nlm.nih.gov .
+
+6.5 Request for Corrections and Comments
+
+  We welcome your suggestions for improvements to GenBank. We are
+especially interested to learn of errors or inconsistencies in the
+data.  BankIt or Sequin can be used to submit revisions to previous
+submissions.  In addition, suggestions and corrections can be sent by
+electronic mail to:  update@ncbi.nlm.nih.gov.  Please be certain to
+indicate the GenBank release number (e.g., Release 218.0) and the
+primary accession number of the entry to which your comments apply; it
+is helpful if you also give the entry name and the current contents of
+any data field for which you are recommending a change.
+
+6.6  Credits and Acknowledgments
+
+Credits -
+
+GenBank Release Coordination	
+	Mark Cavanaugh
+
+GenBank Submission Coordination	
+	Ilene Mizrachi
+
+GenBank Annotation Staff
+	Michael Baxter, Shelby Bidwell, Lori Black, Larissa Brown,
+	Vincent Calhoun, Larry Chlumsky, Karen Clark, Jianli Dai, Scott Durkin,
+	Francescopaolo di Cello, Michel Eschenbrenner, Michael Fetchko,
+	Linda Frisse, Andrea Gocke, Anjanette Johnston, Mark Landree, Jason Lowry,
+	Richard McVeigh, Ilene Mizrachi, DeAnne Olsen Cravaritis, Leigh Riley,
+	Susan Schafer, Beverly Underwood, and Linda Yankie
+
+Data Management and Preparation
+	Serge Bazhin, Evgueni Belyi, Colleen Bollin, Mark Cavanaugh, Yoon Choi,
+	Sergey Dikunov, Ilya Dondoshansky, Justin Foley, Viatcheslav Gorelenkov,
+	Sergiy Gotvyanskyy, Eugene Gribov, Jonathan Kans, Leonid Khotomliansky,
+	Michael Kimelman, Dmitri Kishchukov, Michael Kornbluh, Alex Kotliarov,
+	Alexey Kuznetsov, Frank Ludwig, Anatoly Mnev, Jim Ostell, Vasuki Palanigobu,
+	Anton Perkov, Andriy Petrow, Sergey Petrunin, Wenyao Shi, Denis Sinyakov,
+	Thomas Smith, Vladimir Soussov, Elena Starchenko, Hanzhen Sun,
+	Andrei Vereshchagin, Jewen Xiao, Eugene Yaschenko, Liwei Zhou
+
+Database Administration
+	Slava Khotomliansky, Igor Lozitskiy, Craig Oakley, Eugene Semenov,
+	Ben Slade, Constantin Vasilyev
+
+Customer Support
+	Sherri Bailey, William Bocik, David Brodsky, Peter Cooper, Jada Lewis,
+	Hanguan Liu, Bonnie Maidak, Wayne Matten, Scott McGinnis, Rana Morris,
+	Monica Romiti, Eric Sayers, Tao Tao, Majda Valjavec-Gratian
+
+Project Direction
+	Jim Ostell : Director, NCBI
+	Kim Pruitt : Acting Branch Chief, NCBI/IEB
+
+Acknowledgments - 
+
+  Contractor support for GenBank production and distribution has been
+provided by Management Systems Designers, Inc., ComputerCraft Corporation,
+and The KEVRIC Company, Inc.
+
+6.7 Disclaimer
+
+  The United States Government makes no representations or warranties
+regarding the content or accuracy of the information.  The United States
+Government also makes no representations or warranties of merchantability
+or fitness for a particular purpose or that the use of the sequences will
+not infringe any patent, copyright, trademark, or other rights.  The
+United States Government accepts no responsibility for any consequence
+of the receipt or use of the information.
+
+  For additional information about GenBank releases, please contact
+NCBI by e-mail at info@ncbi.nlm.nih.gov, or by mail at:
+
+  GenBank
+  National Library of Medicine
+  Bldg. 38A Rm. 8N-809
+  8600 Rockville Pike
+  Bethesda, MD 20894
