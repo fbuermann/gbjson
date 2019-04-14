@@ -1,0 +1,9 @@
+build/*
+html/*
+latex/*
+.vs/*
+.vscode/*
+*~
+*/.DS_Store
+.DS_Store
+CMakeSettings.json
