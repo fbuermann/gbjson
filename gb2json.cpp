@@ -10,6 +10,7 @@
 #include <iostream>
 #include <fstream> // ofstream
 #include <string>
+#include <memory> // make_unique
 #include "gbjson.h"
 #include "optionparser/optionparser.h"
 
