@@ -25,7 +25,7 @@ enum optionIndex
 const option::Descriptor usage[] =
 	{
 		{UNKNOWN, 0, "", "", option::Arg::None, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
-												"~~ GenBank to JSON converter\n\n"
+												"~~ JSON to GenBank converter\n\n"
 												"USAGE: json2gb [options] in.json out.gb\n\n"
 												"Options:"},
 		{HELP, 0, "h", "help", option::Arg::None, "  -h  --help      Print help."},
