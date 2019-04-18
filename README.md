@@ -5,13 +5,20 @@ Introduction
 ------------
 
 This program interconverts GenBank and JSON formats. The program contains two
-executables. gb2json converts GenBank to JSON, and json2gb does the reverse.
+executables. __gb2json__ converts GenBank to JSON, and __json2gb__ does the reverse.
 
 Example usage
 -------------
+### File conversion
 ```shell
 $ gb2json in.gb out.json  
 $ json2gb in.json out.gb
+```
+
+### Write to stdout
+```shell
+$ gb2json in.gb
+$ json2gb in.json
 ```
 
 Building from source
@@ -41,7 +48,7 @@ They are included in the source tree.
 Use as a library
 -------------------------
 
-__gbjson__ can be easily used as a C++ library.
+Using __gbjson__ as a C++ library is straight forward.
 Include gbjson.h in your source code. The functions _gb2json_ and _json2gb_ are the API.
 
 Source code documentation

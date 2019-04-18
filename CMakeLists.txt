@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(gbjson VERSION 1.0.2)
+project(gbjson VERSION 1.1.0)
 
 include_directories(${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/include)
 configure_file(${PROJECT_SOURCE_DIR}/include/gbjson.in.h ${PROJECT_BINARY_DIR}/include/gbjson.h)

@@ -12,13 +12,20 @@
   *
   * @section Introduction
   *
-  * This program interconverts GenBank and JSON formats. The program contains two
-  * executables. gb2json converts GenBank to JSON, and json2gb does the reverse.
+  * This program interconverts GenBank and JSON formats. The program contains 
+  * two executables. <b>gb2json</b> converts GenBank to JSON, 
+  * and <b>json2gb</b> does the reverse.
   *
   * @section Usage Example usage
+  * @subsection File2File File conversion
   * $ gb2json <i>in.gb</i> <i>out.json</i>
   *
   * $ json2gb <i>in.json</i> <i>out.gb</i>
+  * 
+  * @subsection File2Stdout Write to stdout 
+  * $ gb2json <i>in.gb</i>
+  *
+  * $ json2gb <i>in.json</i>
   *
   * @section Building Building from source
   * Use <a href="https://cmake.org/">CMake</a> to build from source.
@@ -35,8 +42,8 @@
   * using <a href="https://cmake.org/">CMake</a>.
   *
   * @subsection Library Use as a library
-  * __gbjson__ can be easily used as a C++ library.
-  * Include gbjson.h in your source code. The functions _gb2json_ and _json2gb_ are the API.
+  * Using <b>gbjson</b> as a C++ library is straight forward.
+  * Include gbjson.h in your source code. The functions <i>gb2json</i> and <i>json2gb</i> are the API.
   */
 
 #include <iostream>
@@ -605,6 +612,7 @@ static void parseOrigin(
 	rapidjson::PrettyWriter<rapidjson::StringBuffer> *writer)
 {
 	std::string back(line->substr(6, 79 - 6));
+	stringTrimRight(&back);
 
 	writer->Key("ORIGIN");
 	if (back.empty())

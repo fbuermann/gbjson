@@ -26,7 +26,8 @@ const option::Descriptor usage[] =
 	{
 		{UNKNOWN, 0, "", "", option::Arg::None, "\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
 												"~~ JSON to GenBank converter\n\n"
-												"USAGE: json2gb [options] in.json out.gb\n\n"
+												"USAGE: json2gb [options] in.json out.gb\n"
+												"       json2gb [options] in.json\n\n"
 												"Options:"},
 		{HELP, 0, "h", "help", option::Arg::None, "  -h  --help      Print help."},
 		{FORCE, 0, "f", "force", option::Arg::None, "  -f  --force     Input and output filenames can be the same."},
@@ -62,14 +63,23 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	if (parse.nonOptionsCount() != 2)
+	// Check number of file arguments
+	int nFiles = parse.nonOptionsCount();
+	if (nFiles == 0 || nFiles > 2)
 	{
-		option::printUsage(std::cout, usage);
+		std::cout << "json2gb --help" << std::endl;
 		return 1;
 	}
 
+	// Set IO filenames
 	std::string infile(parse.nonOptions()[0]);
-	std::string outfile(parse.nonOptions()[1]);
+	std::string outfile("");
+
+	if (nFiles == 2)
+	{
+		outfile = parse.nonOptions()[1];
+	}
+
 	if (infile == outfile && !options[FORCE])
 	{
 		std::cout << "Input and output filenames must be different." << std::endl;
@@ -90,7 +100,7 @@ int main(int argc, char *argv[])
 	// Convert the JSON string to GenBank
 	json2gb(&json, &gb, &err);
 
-	// Print to console
+	// Write output
 	if (err.flag)
 	{
 		std::cout << err.msg << std::endl;
@@ -98,9 +108,16 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		std::ofstream output(outfile);
-		output << gb;
-		output.close();
-		std::cout << outfile << std::endl;
+		if (nFiles == 1)
+		{
+			std::cout << gb;
+		}
+		else
+		{
+			std::ofstream output(outfile);
+			output << gb;
+			output.close();
+			std::cout << outfile << std::endl;
+		}
 	}
 }
