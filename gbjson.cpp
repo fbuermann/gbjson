@@ -8,49 +8,49 @@
  */
 
 /**
-  * @mainpage gbjson - A GenBank to JSON converter
-  *
-  * @section Introduction
-  *
-  * This program interconverts GenBank and JSON formats. The program contains 
-  * two executables. <b>gb2json</b> converts GenBank to JSON, 
-  * and <b>json2gb</b> does the reverse.
-  *
-  * @section Usage Example usage
-  * @subsection File2File File conversion
-  * $ gb2json <i>in.gb</i> <i>out.json</i>
-  *
-  * $ json2gb <i>in.json</i> <i>out.gb</i>
-  * 
-  * @subsection File2Stdout Write to stdout 
-  * $ gb2json <i>in.gb</i>
-  *
-  * $ json2gb <i>in.json</i>
-  *
-  * @section Building Building from source
-  * Use <a href="https://cmake.org/">CMake</a> to build from source.
-  *
-  * @subsection UNIX UNIX-like operating systems
-  * $ cd gbjson\n
-  * $ mkdir build\n
-  * $ cd build\n
-  * $ cmake -G "Unix Makefiles" ..\n
-  * $ make
-  *
-  * @subsection WIN32 Windows
-  * Building from source has been tested with <a href="https://visualstudio.microsoft.com/">Visual Studio/MSVC 2019</a>
-  * using <a href="https://cmake.org/">CMake</a>.
-  *
-  * @subsection Library Use as a library
-  * Using <b>gbjson</b> as a C++ library is straight forward.
-  * Include gbjson.h in your source code. The functions <i>gb2json</i> and <i>json2gb</i> are the API.
-  */
+   * @mainpage gbjson - A GenBank to JSON converter
+   *
+   * @section Introduction
+   *
+   * This program interconverts GenBank and JSON formats. The program contains
+   * two executables. <b>gb2json</b> converts GenBank to JSON,
+   * and <b>json2gb</b> does the reverse.
+   *
+   * @section Usage Example usage
+   * @subsection File2File File conversion
+   * $ gb2json <i>in.gb</i> <i>out.json</i>
+   *
+   * $ json2gb <i>in.json</i> <i>out.gb</i>
+   *
+   * @subsection File2Stdout Write to stdout
+   * $ gb2json <i>in.gb</i>
+   *
+   * $ json2gb <i>in.json</i>
+   *
+   * @section Building Building from source
+   * Use <a href="https://cmake.org/">CMake</a> to build from source.
+   *
+   * @subsection UNIX UNIX-like operating systems
+   * $ cd gbjson\n
+   * $ mkdir build\n
+   * $ cd build\n
+   * $ cmake -G "Unix Makefiles" ..\n
+   * $ make
+   *
+   * @subsection WIN32 Windows
+   * Building from source has been tested with <a href="https://visualstudio.microsoft.com/">Visual Studio/MSVC 2019</a>
+   * using <a href="https://cmake.org/">CMake</a>.
+   *
+   * @subsection Library Use as a library
+   * Using <b>gbjson</b> as a C++ library is straight forward.
+   * Include gbjson.h in your source code. The functions <i>gb2json</i> and <i>json2gb</i> are the API.
+   */
 
 #include <iostream>
 #include <stdio.h> // fopen, fread
 #include <string>
 #include <sstream>   // stringstream
-#include <algorithm> // find_if
+#include <algorithm> // find_if, remove
 #include <cctype>	// isspace
 #include <cmath>	 // ceil
 #include "rapidjson/document.h"
@@ -67,7 +67,7 @@ gberror::gberror() : flag(false) {}
  * File handling
  ***************************************************************/
 
-static void fileSize(FILE *fp, size_t *len)
+static inline void fileSize(FILE *fp, size_t *len)
 {
 	size_t pos = ftell(fp);
 
@@ -84,7 +84,9 @@ void fileToString(const std::string *filename, std::string *output, gberror *err
 	if (!input)
 	{
 		err->flag = true;
-		err->msg = "fileToString: File not found.";
+		err->msg = "Failed to open ";
+		err->msg.append(filename->c_str());
+		err->source = "fileToString";
 		return;
 	}
 
@@ -92,35 +94,11 @@ void fileToString(const std::string *filename, std::string *output, gberror *err
 	fileSize(input, &len);
 	output->resize(len);
 
-	fread(&(*output)[0], 1, len, input);
+	len = fread(&(*output)[0], 1, len, input);
+	output->resize(len); // Actual number of chars read
 
 	fclose(input);
 }
-
-static void jsonToDom(const std::string *json, rapidjson::Document *dom, gberror *err)
-{
-	dom->Parse(json->c_str());
-
-	if (!(dom->IsObject()))
-	{
-		err->flag = true;
-		err->msg = "importJson: Invalid JSON.";
-	}
-}
-
-void importJson(const std::string *filename, rapidjson::Document *dom, gberror *err)
-{
-	std::string content;
-	fileToString(filename, &content, err);
-
-	if (err->flag)
-	{
-		return;
-	}
-
-	jsonToDom(&content, dom, err);
-}
-
 /***************************************************************
  * String handling
  ***************************************************************/
@@ -331,6 +309,11 @@ static inline bool isOrigin(const std::string *line)
 	return line->length() >= 6 && line->substr(0, 6) == "ORIGIN";
 }
 
+static inline bool isContig(const std::string *line)
+{
+	return line->length() >= 6 && line->substr(0, 6) == "CONTIG";
+}
+
 static bool isSequence(const std::string *line)
 {
 	if (line->length() < 11)
@@ -360,11 +343,11 @@ bool (*isItemLevel[3])(const std::string *line) = {&isKeyword, &isSubkeyword, &i
  ***************************************************************/
 
 /**
-  * Parse a GenBank LOCUS entry.
-  * @param[in] gbstream The input string stream.
-  * @param[out] line The line buffer.
-  * @param[in] writer The JSON writer object.
-  */
+   * Parse a GenBank LOCUS entry.
+   * @param[in] gbstream The input string stream.
+   * @param[out] line The line buffer.
+   * @param[in] writer The JSON writer object.
+   */
 static void parseLocus(
 	std::stringstream *gbstream,
 	std::string *line,
@@ -372,7 +355,12 @@ static void parseLocus(
 {
 	std::string back(line->substr(12, line->length() - 12));
 	writer->Key("LOCUS");
+	writer->StartArray();
 	writer->String(back.c_str(), back.length(), true);
+	writer->StartArray(); // Dummy array for sub keywords
+	writer->EndArray();   // Dummy array for sub keywords
+	writer->EndArray();
+
 	safeGetline(*gbstream, *line);
 }
 
@@ -427,16 +415,18 @@ static void parseKeyword(
 	writer->String(buffer.c_str(), buffer.length(), true);
 
 	// Parse Sub keywords
-	writer->StartObject();
+	writer->StartArray();
 	if (level < 2)
 	{ // Genbank allows 3 levels for keywords
 		while (isItemLevel[level + 1](line))
 		{
+			writer->StartObject();
 			parseKeyword(gbstream, line, writer, level + 1);
+			writer->EndObject();
 		}
 	}
-	writer->EndObject(); // Subitems
-	writer->EndArray();  // Top level array
+	writer->EndArray(); // Sub keywords
+	writer->EndArray(); // Top level array
 }
 
 /**
@@ -587,17 +577,23 @@ static void parseFeatures(
 	std::string *line,
 	rapidjson::PrettyWriter<rapidjson::StringBuffer> *writer)
 {
+	writer->Key("FEATURES");
 	safeGetline(*gbstream, *line);
+
+	writer->StartObject(); // Features object
 
 	if (!isFeature(line))
 	{ // No features present
-		return;
+		goto cleanup;
 	}
 
 	while (isFeature(line))
 	{
 		parseFeature(gbstream, line, writer);
 	}
+
+cleanup:
+	writer->EndObject(); // Features object
 }
 
 /**
@@ -615,6 +611,7 @@ static void parseOrigin(
 	stringTrimRight(&back);
 
 	writer->Key("ORIGIN");
+	writer->StartArray();
 	if (back.empty())
 	{ // No value
 		writer->Null();
@@ -623,6 +620,9 @@ static void parseOrigin(
 	{ // Entry
 		writer->String(back.c_str(), back.length(), true);
 	}
+	writer->StartArray(); // Dummy array for sub keywords
+	writer->EndArray();   // Dummy array for sub keywords
+	writer->EndArray();
 }
 
 /**
@@ -639,23 +639,75 @@ static void parseSequence(
 	std::string front, back, buffer;
 	safeGetline(*gbstream, *line);
 
-	// Consume the sequence lines
-	while (isSequence(line))
+	if (isContig(line))
 	{
-		splitSequenceLine(line, &front, &back);
+		// Copy content into buffer and trim whitespace
+		splitLine(line, &front, &back);
 		buffer.append(back);
-		safeGetline(*gbstream, *line);
-	}
+		stringTrimRight(&buffer);
 
-	// Write the data
-	writer->Key("SEQUENCE");
-	if (buffer.empty())
-	{
-		writer->Null();
+		bool whitespace = isspace(back.back());
+		if (whitespace)
+		{
+			buffer.append(" ");
+		}
+
+		// Consume contig lines
+		safeGetline(*gbstream, *line);
+		while (isContinuation(line))
+		{
+
+			splitLine(line, &front, &back);
+			whitespace = isspace(back.back());
+			stringTrimRight(&back);
+			if (whitespace)
+			{
+				back.append(" ");
+			}
+			buffer.append("\n");
+			buffer.append(back);
+			safeGetline(*gbstream, *line);
+		}
+
+		// Write the data
+		writer->Key("CONTIG");
+		writer->StartArray();
+		if (buffer.empty())
+		{
+			writer->Null();
+		}
+		else
+		{
+			writer->String(buffer.c_str(), buffer.length(), true);
+		}
+		writer->StartArray(); // Dummy array for sub keywords
+		writer->EndArray();   // Dummy array for sub keywords
+		writer->EndArray();
 	}
-	else
+	else if (isSequence(line))
 	{
-		writer->String(buffer.c_str(), buffer.length(), true);
+		// Consume the sequence lines
+		while (isSequence(line))
+		{
+			splitSequenceLine(line, &front, &back);
+			buffer.append(back);
+			safeGetline(*gbstream, *line);
+		}
+
+		// Write the data
+		writer->Key("SEQUENCE");
+		writer->StartArray();
+		if (buffer.empty())
+		{
+			writer->Null();
+		}
+		else
+		{
+			writer->String(buffer.c_str(), buffer.length(), true);
+		}
+		writer->StartArray(); // Dummy array for sub keywords
+		writer->EndArray();   // Dummy array for sub keywords
+		writer->EndArray();
 	}
 }
 
@@ -673,26 +725,35 @@ static void parseItem(
 
 	if (isLocus(line))
 	{
+		writer->StartArray(); // Start the GenBank array
+
 		writer->StartObject();
 		parseLocus(gbstream, line, writer);
+		writer->EndObject();
 	}
 	else if (isEnd(line))
 	{
-		writer->EndObject();
+		writer->EndArray(); // Start the GenBank array
 		safeGetline(*gbstream, *line);
 	}
 	else if (isOrigin(line))
 	{
+		writer->StartObject();
 		parseOrigin(gbstream, line, writer);
+		writer->EndObject();
+
+		writer->StartObject();
 		parseSequence(gbstream, line, writer);
+		writer->EndObject();
 	}
 	else if (isKeyword(line) && !isFeatureHeader(line))
 	{
+		writer->StartObject();
 		parseKeyword(gbstream, line, writer, 0);
+		writer->EndObject();
 	}
 	else if (isFeatureHeader(line))
 	{
-		writer->Key("FEATURES");
 		writer->StartObject();
 		parseFeatures(gbstream, line, writer);
 		writer->EndObject();
@@ -738,7 +799,8 @@ void gb2json(const std::string *gb, std::string *json, gberror *err)
 	if (!writer.IsComplete())
 	{
 		err->flag = true;
-		err->msg = "parseGenBank: Not a valid GenBank.";
+		err->msg = "Incomplete GenBank";
+		err->source = "gb2json";
 	}
 	else
 	{
@@ -753,9 +815,9 @@ void gb2json(const std::string *gb, std::string *json, gberror *err)
  ***************************************************************/
 
 /**
-  * Handler constructor.
-  */
-JSONHandler::JSONHandler() : state(START), nwritten(0) {}
+   * Handler constructor.
+   */
+JSONHandler::JSONHandler() : state(START), nwritten(0), skipStateUpdate(false) {}
 
 // Unused handler functions
 bool JSONHandler::Bool(bool b) { return true; }
@@ -765,8 +827,6 @@ bool JSONHandler::Int64(int64_t i) { return true; }
 bool JSONHandler::Uint64(uint64_t i) { return true; }
 bool JSONHandler::Double(double d) { return true; }
 bool JSONHandler::RawNumber(const char *str, rapidjson::SizeType length, bool copy) { return true; }
-bool JSONHandler::StartArray() { return true; };
-bool JSONHandler::EndArray(rapidjson::SizeType elementCount) { return true; };
 
 /**
  * Update handler state based on a JSON key.
@@ -785,44 +845,108 @@ void JSONHandler::updateState(const std::string key)
 	else if (key == "LOCUS")
 	{
 		state = LOCUS;
+		skipStateUpdate = true;
 	}
 	else if (key == "ORIGIN")
 	{
 		state = ORIGIN;
+		skipStateUpdate = true;
 	}
 	else if (key == "SEQUENCE")
 	{
 		state = SEQUENCE;
+		skipStateUpdate = true;
+	}
+	else if (key == "CONTIG")
+	{
+		state = CONTIG;
+		skipStateUpdate = true;
 	}
 	else if (key == "FEATURES")
 	{
 		state = FEATURE_HEADER;
 	}
+	else if (!skipStateUpdate && (state == KEYWORD || state == SUBKEYWORD || state == SUBSUBKEYWORD))
+	{
+		skipStateUpdate = true;
+	}
 	return;
 }
 
-bool JSONHandler::StartObject()
+bool JSONHandler::StartArray()
 {
 	switch (state)
 	{
 	case KEYWORD:
 	{
-		state = SUBKEYWORD;
+		if (skipStateUpdate)
+		{
+			skipStateUpdate = false;
+		}
+		else
+		{
+			state = SUBKEYWORD;
+		}
 		break;
 	}
 	case SUBKEYWORD:
 	{
-		state = SUBSUBKEYWORD;
+		if (skipStateUpdate)
+		{
+			skipStateUpdate = false;
+		}
+		else
+		{
+			state = SUBSUBKEYWORD;
+		}
 		break;
 	}
-	case FEATURE_HEADER:
+	case LOCUS:
 	{
-		state = FEATURE;
+		if (skipStateUpdate)
+		{
+			skipStateUpdate = false;
+		}
+		else
+		{
+			state = LOCUSSUB;
+		}
 		break;
 	}
-	case FEATURE:
+	case ORIGIN:
 	{
-		state = QUALIFIER;
+		if (skipStateUpdate)
+		{
+			skipStateUpdate = false;
+		}
+		else
+		{
+			state = ORIGINSUB;
+		}
+		break;
+	}
+	case SEQUENCE:
+	{
+		if (skipStateUpdate)
+		{
+			skipStateUpdate = false;
+		}
+		else
+		{
+			state = SEQUENCESUB;
+		}
+		break;
+	}
+	case CONTIG:
+	{
+		if (skipStateUpdate)
+		{
+			skipStateUpdate = false;
+		}
+		else
+		{
+			state = CONTIGSUB;
+		}
 		break;
 	}
 	case END:
@@ -836,13 +960,9 @@ bool JSONHandler::StartObject()
 	return true;
 }
 
-bool JSONHandler::EndObject(rapidjson::SizeType elementCount)
+bool JSONHandler::EndArray(rapidjson::SizeType elementCount)
 {
-	if (state == QUALIFIER)
-	{
-		state = FEATURE;
-	}
-	else if (state == FEATURE)
+	if (state == FEATURE)
 	{
 		state = KEYWORD;
 	}
@@ -854,11 +974,65 @@ bool JSONHandler::EndObject(rapidjson::SizeType elementCount)
 	{
 		state = KEYWORD;
 	}
-	else if (state == SEQUENCE || state == ORIGIN)
+	else if (state == LOCUSSUB)
 	{
-		state = END;
+		state = LOCUS;
+	}
+	else if (state == LOCUS)
+	{
+		state = KEYWORD;
+	}
+	else if (state == ORIGINSUB)
+	{
+		state = ORIGIN;
+	}
+	else if (state == ORIGIN)
+	{
+		state = KEYWORD;
+	}
+	else if (state == SEQUENCESUB)
+	{
+		state = SEQUENCE;
+	}
+	else if (state == CONTIGSUB)
+	{
+		state = CONTIG;
+	}
+	else if (state == SEQUENCE || state == CONTIG)
+	{
 		gb << "//\n";
 		nwritten = 0;
+		state = END;
+	}
+	return true;
+}
+
+bool JSONHandler::StartObject()
+{
+	switch (state)
+	{
+	case FEATURE_HEADER:
+	{
+		state = FEATURE;
+		break;
+	}
+	case FEATURE:
+	{
+		state = QUALIFIER;
+		break;
+	}
+	default:
+		break;
+	}
+
+	return true;
+}
+
+bool JSONHandler::EndObject(rapidjson::SizeType elementCount)
+{
+	if (state == QUALIFIER)
+	{
+		state = FEATURE;
 	}
 	return true;
 }
@@ -973,7 +1147,6 @@ bool JSONHandler::String(const char *str, rapidjson::SizeType length, bool copy)
 	case LOCUS:
 	{
 		gb << str << "\n";
-		state = KEYWORD;
 		break;
 	}
 	case ORIGIN:
@@ -1086,8 +1259,18 @@ void json2gb(const std::string *json, std::string *gb, gberror *err)
 {
 	JSONHandler handler;
 	rapidjson::Reader reader;
+
 	rapidjson::StringStream sstream(json->c_str());
 	reader.Parse(sstream, handler);
 
-	*gb = handler.gb.str();
+	if (reader.HasParseError())
+	{
+		err->flag = true;
+		err->msg = "Unable to parse JSON";
+		err->source = "json2gb";
+	}
+	else
+	{
+		*gb = handler.gb.str();
+	}
 }

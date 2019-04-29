@@ -22,6 +22,7 @@ struct gberror
 {
 	bool flag;		 ///< Error?
 	std::string msg; ///< Error message.
+	std::string source; ///< The function raising the error
 	gberror();
 };
 
@@ -29,10 +30,16 @@ void fileToString(const std::string *filename, std::string *output, gberror *err
 void gb2json(const std::string *gb, std::string *json, gberror *err);
 void json2gb(const std::string *json, std::string *gb, gberror *err);
 
+/*
+ * JSON handler state.
+ * This is used to determine formatting rules.
+ */
 enum handlerState
 {
+    /* Dummy arrays give all top level objects the same structure */
 	START,
 	LOCUS,
+	LOCUSSUB, // Dummy array
 	KEYWORD,
 	SUBKEYWORD,
 	SUBSUBKEYWORD,
@@ -41,7 +48,11 @@ enum handlerState
 	QUALIFIER_LOCATION,
 	QUALIFIER,
 	ORIGIN,
+	ORIGINSUB, // Dummy array
 	SEQUENCE,
+	SEQUENCESUB, // Dummy array
+	CONTIG,
+	CONTIGSUB, // Dummy array
 	END
 };
 
@@ -52,6 +63,7 @@ enum handlerState
 struct JSONHandler : public rapidjson::BaseReaderHandler<rapidjson::UTF8<>, JSONHandler>
 {
 	handlerState state;   ///< The handler is a finite state machine. Its behavior depends on its state.
+	bool skipStateUpdate; ///< Flag for skipping state update
 	std::stringstream gb; ///< The GenBank string.
 	int nwritten;		  ///< Number of characters that have been written to line.
 	JSONHandler();

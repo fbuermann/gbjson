@@ -116,6 +116,12 @@ int main(int argc, char *argv[])
 		{
 			std::ofstream output(outfile);
 			output << gb;
+			if (output.fail())
+			{
+				std::cout << "Failed writing to " << outfile << std::endl;
+				output.close();
+				return 1;
+			}
 			output.close();
 			std::cout << outfile << std::endl;
 		}
