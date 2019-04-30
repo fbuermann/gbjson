@@ -447,10 +447,13 @@ static void parseQualifier(
 	std::string buffer(back);
 	bool whitespace = isspace(back.back());
 	stringTrimRight(&buffer);
+
 	if (whitespace)
 	{
 		buffer.append(" ");
 	}
+
+	buffer.append("\n");
 
 	// Read the next line
 	safeGetline(*gbstream, *line);
@@ -468,7 +471,9 @@ static void parseQualifier(
 			{
 				buffer.append(" ");
 			}
+
 			buffer.append(back);
+			buffer.append("\n");
 			safeGetline(*gbstream, *line);
 
 			if (isContinuation(line))
@@ -480,6 +485,12 @@ static void parseQualifier(
 				break;
 			}
 		}
+	}
+
+	// Drop last newline
+	if (!buffer.empty())
+	{
+		buffer.pop_back();
 	}
 
 	// Find the qualifier delimiter if it exists
