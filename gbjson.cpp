@@ -90,7 +90,7 @@ void fileToString(const std::string *filename, std::string *output, gberror *err
 		return;
 	}
 
-	size_t len;
+	size_t len; // File size
 	fileSize(input, &len);
 	output->resize(len);
 
@@ -486,6 +486,8 @@ static void parseQualifier(
 	size_t equalSignPos = buffer.find('=');
 
 	// Write out the buffer
+	writer->StartObject(); // Qualifier start
+
 	if (equalSignPos == -1 || equalSignPos == buffer.length() - 1)
 	{
 		// No qualifier value
@@ -500,6 +502,8 @@ static void parseQualifier(
 		writer->Key(key.c_str(), key.length(), true);
 		writer->String(value.c_str(), value.length(), true);
 	}
+
+	writer->EndObject(); // Qualifier end
 }
 
 /**
@@ -521,9 +525,11 @@ static void parseFeature(
 	stringTrimRight(&buffer);
 	stringTrim(&front);
 
+	writer->StartObject(); // Feature start
 	writer->Key(front.c_str(), front.length(), true);
 
-	writer->StartObject(); // Feature start
+	writer->StartArray();  // Qualifier array
+	writer->StartObject(); // Location start
 	writer->Key("Location");
 
 	// Consume location continuation lines
@@ -552,6 +558,7 @@ static void parseFeature(
 
 	// Write location
 	writer->String(buffer.c_str(), buffer.length(), true);
+	writer->EndObject(); // Location end
 
 	// Parse qualifiers
 	while (isQualifier(&back) && isContinuation(line))
@@ -563,6 +570,7 @@ static void parseFeature(
 		}
 	}
 
+	writer->EndArray();  // Qualifier array
 	writer->EndObject(); // Feature end
 }
 
@@ -580,7 +588,7 @@ static void parseFeatures(
 	writer->Key("FEATURES");
 	safeGetline(*gbstream, *line);
 
-	writer->StartObject(); // Features object
+	writer->StartArray(); // Features array
 
 	if (!isFeature(line))
 	{ // No features present
@@ -593,7 +601,7 @@ static void parseFeatures(
 	}
 
 cleanup:
-	writer->EndObject(); // Features object
+	writer->EndArray(); // Features array
 }
 
 /**
@@ -962,7 +970,15 @@ bool JSONHandler::StartArray()
 
 bool JSONHandler::EndArray(rapidjson::SizeType elementCount)
 {
-	if (state == FEATURE)
+	if (state == QUALIFIER || state == QUALIFIER_LOCATION)
+	{
+		state = FEATURE;
+	}
+	else if (state == FEATURE)
+	{
+		state = FEATURE_HEADER;
+	}
+	else if (state == FEATURE_HEADER)
 	{
 		state = KEYWORD;
 	}
@@ -1024,13 +1040,12 @@ bool JSONHandler::StartObject()
 	default:
 		break;
 	}
-
 	return true;
 }
 
 bool JSONHandler::EndObject(rapidjson::SizeType elementCount)
 {
-	if (state == QUALIFIER)
+	if (state == QUALIFIER || state == QUALIFIER_LOCATION)
 	{
 		state = FEATURE;
 	}
